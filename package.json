@@ -1,0 +1,20 @@
+{
+  "name": "potronet-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "tsc --noEmit",
+    "lint": "echo 'no lint configured'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1"
+  },
+  "devDependencies": {
+    "@vercel/node": "^5.1.8",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}
