@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthUser, requireAdmin, requireSudo } from '../lib/auth';
 import { supabaseAdmin } from '../lib/supabase';
+import { sendEmail } from '../lib/email';
+import { notificationTemplate } from '../lib/email-templates';
 
 // GET /admin/stats
 export async function adminStats(req: VercelRequest, res: VercelResponse) {
@@ -214,6 +216,20 @@ export async function adminProfessorRequests(req: VercelRequest, res: VercelResp
     return res.status(405).json({ error: 'Method not allowed' });
 }
 
+async function sendNotificationEmails(userIds: string[], message: string) {
+    const CHUNK = 50;
+    for (let i = 0; i < userIds.length; i += CHUNK) {
+        const chunk = userIds.slice(i, i + CHUNK);
+        const { data: profiles } = await supabaseAdmin
+            .from('profiles').select('email').in('id', chunk).eq('is_banned', false);
+        await Promise.all(
+            (profiles || []).map(p =>
+                sendEmail(p.email, 'Notificación de PotroNET', notificationTemplate(message, ''))
+            )
+        );
+    }
+}
+
 // GET|POST|PATCH|DELETE /admin/subjects
 export async function adminSubjects(req: VercelRequest, res: VercelResponse) {
     const user = await getAuthUser(req);
@@ -322,6 +338,9 @@ export async function adminNotifications(req: VercelRequest, res: VercelResponse
             for (let i = 0; i < notifications.length; i += CHUNK) {
                 await supabaseAdmin.from('notifications').insert(notifications.slice(i, i + CHUNK));
             }
+
+            // Enviar emails en background
+            sendNotificationEmails(userIds, message.trim()).catch(() => {});
 
             return res.status(201).json({ sent: userIds.length });
         } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }

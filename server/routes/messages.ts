@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthUser } from '../lib/auth';
-import { createSupabaseClient } from '../lib/supabase';
+import { createSupabaseClient, supabaseAdmin } from '../lib/supabase';
+import { sendEmail } from '../lib/email';
+import { firstMessageTemplate, firstMessageOfDayTemplate } from '../lib/email-templates';
 
 // GET|POST /messages
 export async function messagesIndex(req: VercelRequest, res: VercelResponse) {
@@ -63,8 +65,55 @@ async function messagesPost(req: VercelRequest, res: VercelResponse, userId: str
         const { data, error } = await supabase
             .from('messages').insert({ sender_id: userId, receiver_id, content: content.trim() }).select().single();
         if (error) return res.status(400).json({ error: error.message });
+
+        // Disparar emails en background (sin bloquear la respuesta)
+        triggerMessageEmails(userId, receiver_id, content.trim()).catch(() => {});
+
         return res.status(201).json({ message: data });
     } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+}
+
+async function triggerMessageEmails(senderId: string, receiverId: string, content: string) {
+    // Obtener datos del sender y receiver
+    const [{ data: sender }, { data: receiver }] = await Promise.all([
+        supabaseAdmin.from('profiles').select('full_name').eq('id', senderId).single(),
+        supabaseAdmin.from('profiles').select('full_name, email').eq('id', receiverId).single(),
+    ]);
+
+    if (!receiver?.email || !sender?.full_name) return;
+
+    const preview = content.length > 120 ? content.slice(0, 120) + '…' : content;
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+
+    // Contar mensajes previos entre estos dos usuarios (ever)
+    const { count: totalPrev } = await supabaseAdmin
+        .from('messages').select('*', { count: 'exact', head: true })
+        .eq('sender_id', senderId).eq('receiver_id', receiverId);
+
+    // Trigger 1: primer mensaje ever (count era 0 antes de este insert, ahora es 1)
+    if (totalPrev === 1) {
+        await sendEmail(
+            receiver.email,
+            `${sender.full_name} te envió su primer mensaje en PotroNET`,
+            firstMessageTemplate(sender.full_name, preview)
+        );
+        return; // No enviar también el "primer del día" si ya enviamos el "primero ever"
+    }
+
+    // Contar mensajes de hoy entre estos dos usuarios
+    const { count: todayCount } = await supabaseAdmin
+        .from('messages').select('*', { count: 'exact', head: true })
+        .eq('sender_id', senderId).eq('receiver_id', receiverId)
+        .gte('created_at', todayStart.toISOString());
+
+    // Trigger 3: primer mensaje del día (count es 1 = este es el primero de hoy)
+    if (todayCount === 1) {
+        await sendEmail(
+            receiver.email,
+            `${sender.full_name} te escribió hoy en PotroNET`,
+            firstMessageOfDayTemplate(sender.full_name, preview)
+        );
+    }
 }
 
 // GET /messages/:userId
