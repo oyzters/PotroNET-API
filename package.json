@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "node dev-server.js",
     "build": "tsc --noEmit",
     "lint": "echo 'no lint configured'"
   },
