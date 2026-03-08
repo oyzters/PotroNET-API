@@ -214,6 +214,62 @@ export async function adminProfessorRequests(req: VercelRequest, res: VercelResp
     return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// GET|POST|PATCH|DELETE /admin/subjects
+export async function adminSubjects(req: VercelRequest, res: VercelResponse) {
+    const user = await getAuthUser(req);
+    if (!requireAdmin(user)) return res.status(403).json({ error: 'Se requieren permisos de administrador' });
+
+    if (req.method === 'GET') {
+        const career_id = req.query.career_id as string;
+        if (!career_id) return res.status(400).json({ error: 'career_id is required' });
+        try {
+            const { data, error } = await supabaseAdmin.from('career_subjects').select('*')
+                .eq('career_id', career_id).order('semester').order('name');
+            if (error) return res.status(400).json({ error: error.message });
+            return res.status(200).json({ subjects: data });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    if (req.method === 'POST') {
+        const { career_id, name, semester, credits } = req.body;
+        if (!career_id || !name || !semester) return res.status(400).json({ error: 'career_id, name y semester son requeridos' });
+        try {
+            const { data, error } = await supabaseAdmin.from('career_subjects')
+                .insert({ career_id, name: name.trim(), semester: Number(semester), credits: Number(credits) || 0 })
+                .select().single();
+            if (error) return res.status(400).json({ error: error.message });
+            return res.status(201).json({ subject: data });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    if (req.method === 'PATCH') {
+        const { id, name, semester, credits } = req.body;
+        if (!id) return res.status(400).json({ error: 'id is required' });
+        const updates: Record<string, unknown> = {};
+        if (name !== undefined) updates.name = name.trim();
+        if (semester !== undefined) updates.semester = Number(semester);
+        if (credits !== undefined) updates.credits = Number(credits);
+        if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No hay datos para actualizar' });
+        try {
+            const { data, error } = await supabaseAdmin.from('career_subjects').update(updates).eq('id', id).select().single();
+            if (error) return res.status(400).json({ error: error.message });
+            return res.status(200).json({ subject: data });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    if (req.method === 'DELETE') {
+        const id = req.query.id as string;
+        if (!id) return res.status(400).json({ error: 'id is required' });
+        try {
+            const { error } = await supabaseAdmin.from('career_subjects').delete().eq('id', id);
+            if (error) return res.status(400).json({ error: error.message });
+            return res.status(200).json({ success: true });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+}
+
 // GET|POST /admin/notifications
 export async function adminNotifications(req: VercelRequest, res: VercelResponse) {
     const user = await getAuthUser(req);
