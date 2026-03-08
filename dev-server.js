@@ -21,41 +21,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// Collect all routes first, then register in correct order
-const routes = [];
-
-function collectRoutes(dir, prefix = '') {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-
-        if (entry.isDirectory()) {
-            collectRoutes(fullPath, `${prefix}/${entry.name}`);
-            continue;
-        }
-
-        if (!entry.name.endsWith('.ts') && !entry.name.endsWith('.js')) continue;
-
-        let routePath = entry.name
-            .replace(/\.ts$/, '')
-            .replace(/\.js$/, '');
-
-        // Handle [param] -> :param
-        const hasParam = routePath.includes('[');
-        routePath = routePath.replace(/\[([^\]]+)\]/g, ':$1');
-
-        // Handle index files
-        if (routePath === 'index') {
-            routePath = '';
-        }
-
-        const expressPath = `/api${prefix}${routePath ? '/' + routePath : ''}`;
-
-        routes.push({ expressPath, fullPath, hasParam });
-    }
-}
-
 // Register ts-node before loading any TS files
 require('ts-node').register({
     transpileOnly: true,
@@ -68,58 +33,47 @@ require('ts-node').register({
 });
 
 console.log('\n🐎 PotroNET API Dev Server\n');
-console.log('Loading routes:');
 
-collectRoutes(path.join(__dirname, 'api'));
+try {
+    const handler = require('./api/[...path].ts').default;
 
-// Sort: static/specific routes first, parameterized routes last
-routes.sort((a, b) => {
-    if (a.hasParam !== b.hasParam) return a.hasParam ? 1 : -1;
-    const aSegs = a.expressPath.split('/').length;
-    const bSegs = b.expressPath.split('/').length;
-    if (bSegs !== aSegs) return bSegs - aSegs;
-    return a.expressPath.localeCompare(b.expressPath);
-});
+    app.all('/api/*', (req, res) => {
+        // Mock the [...path] query array that Vercel usually provides
+        const pathPart = req.params[0];
+        const segments = pathPart ? pathPart.split('/').filter(Boolean) : [];
 
-for (const route of routes) {
-    try {
-        const handler = require(route.fullPath).default;
-        if (typeof handler === 'function') {
-            app.all(route.expressPath, (req, res) => {
-                // Express req.query is a getter in Express 5+ and cannot be reassigned.
-                // Vercel handlers read params from req.query, so we use a Proxy
-                // to intercept property access and merge params into query.
-                const originalQuery = req.query || {};
-                const mergedData = { ...originalQuery, ...req.params };
+        // Pass to standard handler proxy to allow query modification if needed
+        const reqProxy = new Proxy(req, {
+            get(target, prop) {
+                if (prop === 'query') {
+                    return { ...target.query, path: segments };
+                }
+                const val = target[prop];
+                if (typeof val === 'function') return val.bind(target);
+                return val;
+            },
+        });
 
-                const queryProxy = new Proxy(mergedData, {
-                    get(target, prop) {
-                        return target[prop];
-                    },
-                    has(target, prop) {
-                        return prop in target;
-                    },
-                });
+        handler(reqProxy, res);
+    });
 
-                // Create a proxy for req that overrides query
-                const reqProxy = new Proxy(req, {
-                    get(target, prop) {
-                        if (prop === 'query') return queryProxy;
-                        const val = target[prop];
-                        if (typeof val === 'function') return val.bind(target);
-                        return val;
-                    },
-                });
+    app.all('/api', (req, res) => {
+        const reqProxy = new Proxy(req, {
+            get(target, prop) {
+                if (prop === 'query') return { ...target.query, path: [] };
+                const val = target[prop];
+                if (typeof val === 'function') return val.bind(target);
+                return val;
+            },
+        });
+        handler(reqProxy, res);
+    });
 
-                handler(reqProxy, res);
-            });
-            console.log(`  ✓ ${route.expressPath}${route.hasParam ? ' (param)' : ''}`);
-        }
-    } catch (err) {
-        console.error(`  ✗ ${route.expressPath}: ${err.message}`);
-    }
+    console.log('  ✓ Catch-all endpoint registered for /api/*');
+
+    app.listen(PORT, () => {
+        console.log(`\n🚀 API running at http://localhost:${PORT}/api\n`);
+    });
+} catch (err) {
+    console.error(`Failed to load handler: ${err.message}`);
 }
-
-app.listen(PORT, () => {
-    console.log(`\n🚀 API running at http://localhost:${PORT}/api\n`);
-});
