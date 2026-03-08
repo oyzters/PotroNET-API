@@ -12,6 +12,9 @@ const PORT = 3000;
 // Middleware
 app.use(express.json());
 
+// Servir archivos estáticos
+app.use(express.static(path.join(__dirname, 'public')));
+
 // CORS
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
