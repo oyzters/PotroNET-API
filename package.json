@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "node dev-server.js",
     "build": "tsc --noEmit",
     "lint": "echo 'no lint configured'"
   },
@@ -15,6 +15,7 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vercel": "^50.28.0"
   }
 }
