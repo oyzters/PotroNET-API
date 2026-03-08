@@ -51,6 +51,13 @@
             padding: 0;
         }
 
+        html,
+        body {
+            overflow-x: hidden;
+            width: 100vw;
+            max-width: 100%;
+        }
+
         body {
             font-family: 'Outfit', system-ui, -apple-system, sans-serif;
             background-color: var(--bg-color);
@@ -58,7 +65,8 @@
                 radial-gradient(circle at 10% 20%, rgba(79, 70, 229, 0.05), transparent 30%),
                 radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.05), transparent 30%);
             color: var(--text-main);
-            height: 100vh;
+            min-height: 100vh;
+            width: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -71,7 +79,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 200vw;
+            width: 200%;
             height: 200vh;
             background-size: 50px 50px;
             background-image:
@@ -150,6 +158,8 @@
             z-index: 5;
             pointer-events: none;
             perspective: 1000px;
+            overflow: hidden;
+            /* Evita que los badges que salgan por los lados hagan scroll */
         }
 
         .glass-badge {
@@ -250,6 +260,21 @@
             100% {
                 opacity: 0;
                 transform: translate(calc(var(--start-x) + var(--drift-x)), calc(var(--start-y) - var(--travel-y))) scale(0.9) translateY(-30px);
+            }
+        }
+
+        /* Media Query para Móviles: Ajustes de tamaño para las insignias */
+        @media (max-width: 640px) {
+            .glass-badge {
+                padding: 6px 12px;
+                font-size: 0.70rem;
+                gap: 8px;
+                border-radius: 12px;
+            }
+
+            .status {
+                font-size: 0.65rem;
+                padding: 1px 6px;
             }
         }
     </style>
@@ -402,21 +427,19 @@
                 </div>
             `;
 
-            // Nueva lógica de spawn más limpia y orquestada:
-            // Aparecen en la zona inferior/media pero distribuidos lateralmente,
-            // evitando cruzar en línea recta incómoda; en su lugar suben orgánicamente ("burbujas").
+            // Nueva lógica de distribución adaptable a móviles o escritorio
+            // Repartimos el inicio a lo ancho de toda la pantalla (de lado a lado)
+            // de 5vw a 85vw para que no se amontonen solo en la derecha
+            const startX = 5 + Math.random() * 80;
 
-            // Lado izquierdo o derecho para no tapar tanto el centro de golpe
-            const isLeft = Math.random() > 0.5;
-            // X inicial: 5% a 35% del lado izquierdo, O 65% a 95% del lado derecho
-            const startX = isLeft ? 5 + Math.random() * 30 : 65 + Math.random() * 30;
-            // Y inicial: Siempre abajo o en medio bajo de la pantalla (70vh a 110vh)
-            const startY = 70 + Math.random() * 40;
+            // Y inicial: Siempre abajo pero con mucha más dispersión en altura (75vh a 120vh)
+            const startY = 75 + Math.random() * 45;
 
-            // Qué tanto se mueve hacia los lados mientras sube (-10vw a +10vw)
-            const driftX = (Math.random() - 0.5) * 20;
-            // Cuánto sube en total (50vh a 90vh de recorrido vertical)
-            const travelY = 50 + Math.random() * 40;
+            // Qué tanto se mueve hacia los lados (Deriva horizontal). Más pronunciada a veces.
+            const driftX = (Math.random() - 0.5) * 30;
+
+            // Cuánto sube en total (60vh a 110vh de recorrido vertical, para cruzar toda la pantalla)
+            const travelY = 60 + Math.random() * 50;
 
             // Inyección de variables CSS para la interpolación en el @keyframes
             badge.style.setProperty('--start-x', `${startX}vw`);
