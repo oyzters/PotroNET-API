@@ -1,0 +1,9 @@
+
+> potronet-api@1.0.0 dev
+> tsc && node dev-server.js
+
+[dotenv@17.3.1] injecting env (3) from .env -- tip: ÔÜÖ´©Å  suppress all logs with { quiet: true }
+
+­ƒÉÄ PotroNET API Dev Server
+
+Failed to load handler: Missing parameter name at index 6: /api/*; visit https://git.new/pathToRegexpError for info

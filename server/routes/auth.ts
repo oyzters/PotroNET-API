@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { getAuthUser } from '../lib/auth.js';
-import { supabaseAdmin } from '../lib/supabase.js';
+import { getAuthUser } from '../lib/auth';
+import { supabaseAdmin } from '../lib/supabase';
 
 // POST /auth/login
 export async function login(req: VercelRequest, res: VercelResponse) {

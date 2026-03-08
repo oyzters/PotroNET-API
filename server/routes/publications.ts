@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthUser } from '../lib/auth.js';
-import { createSupabaseClient } from '../lib/supabase.js';
-import { validateContent } from '../lib/moderation.js';
+import { getAuthUser } from '../lib/auth';
+import { createSupabaseClient } from '../lib/supabase';
+import { validateContent } from '../lib/moderation';
 
 // GET|POST /publications
 export async function publicationsIndex(req: VercelRequest, res: VercelResponse) {

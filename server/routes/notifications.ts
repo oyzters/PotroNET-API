@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthUser } from '../lib/auth.js';
-import { createSupabaseClient } from '../lib/supabase.js';
+import { getAuthUser } from '../lib/auth';
+import { createSupabaseClient } from '../lib/supabase';
 
 // GET|PATCH /notifications
 export async function notificationsIndex(req: VercelRequest, res: VercelResponse) {

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthUser } from '../lib/auth.js';
-import { createSupabaseClient } from '../lib/supabase.js';
+import { getAuthUser } from '../lib/auth';
+import { createSupabaseClient } from '../lib/supabase';
 
 // POST /reports
 export async function reportsIndex(req: VercelRequest, res: VercelResponse) {

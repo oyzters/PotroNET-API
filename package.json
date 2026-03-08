@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node dev-server.js",
-    "build": "tsc --noEmit",
+    "dev": "tsc && node dev-server.js",
+    "build": "tsc",
     "lint": "echo 'no lint configured'"
   },
   "dependencies": {

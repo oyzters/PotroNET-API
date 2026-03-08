@@ -21,25 +21,19 @@ app.use((req, res, next) => {
     next();
 });
 
-// Register ts-node before loading any TS files
-require('ts-node').register({
-    transpileOnly: true,
-    compilerOptions: {
-        module: 'commonjs',
-        target: 'es2020',
-        esModuleInterop: true,
-        moduleResolution: 'node',
-    },
-});
+// TS-Node is no longer needed since we compile to ./dist explicitly via npm run dev
 
 console.log('\n🐎 PotroNET API Dev Server\n');
 
 try {
-    const handler = require('./api/[...path].ts').default;
+    require('ts-node').register();
+    const routerPath = path.join(__dirname, 'api', '[...path].ts');
+    const handler = require(routerPath).default || require(routerPath);
 
-    app.all('/api/*', (req, res) => {
+    // Use Express v5 compatible routing syntax with a pure RegExp
+    app.all(/^\/api(?:\/(.*))?$/, (req, res) => {
         // Mock the [...path] query array that Vercel usually provides
-        const pathPart = req.params[0];
+        const pathPart = req.params[0] || '';
         const segments = pathPart ? pathPart.split('/').filter(Boolean) : [];
 
         // Pass to standard handler proxy to allow query modification if needed
