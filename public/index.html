@@ -1,36 +1,454 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="description" content="API de PotroNET" />
     <title>PotroNET API</title>
+    <!-- Google Fonts para una tipografía excepcional -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=JetBrains+Mono:wght@500;700&display=swap"
+        rel="stylesheet">
     <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+        /* Variables y tokens de diseño - MODO OSCURO (Basado en PotroNET) */
+        :root {
+            --bg-color: oklch(0.145 0 0);
+            /* Oscuro PotroNET */
+            --grid-color: rgba(255, 255, 255, 0.05);
+            /* Cuadrícula sutil clara sobre oscuro */
+            --primary: #818cf8;
+            /* Índigo Suave */
+            --secondary: #22d3ee;
+            /* Cian Brillante */
+            --accent: #a78bfa;
+            /* Morado Suave */
+            --success: #34d399;
+            /* Esmeralda */
+            --danger: #f87171;
+            /* Rojo Suave */
+            --warning: #fbbf24;
+            /* Ámbar */
+            --text-main: oklch(0.985 0 0);
+            /* Texto Principal Claro PotroNET */
+            --text-muted: #94a3b8;
+            /* Gris Pizarra Medio */
+            --glass-bg: rgba(30, 41, 59, 0.65);
+            /* Fondo Dark Glass */
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Reset Básico */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
             margin: 0;
-            background-color: #f9fafb;
-            color: #111827;
+            padding: 0;
         }
 
-        h1 {
-            color: #4f46e5;
+        body {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(79, 70, 229, 0.05), transparent 30%),
+                radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.05), transparent 30%);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
         }
 
-        p {
-            color: #6b7280;
+        /* 1. Fondo de cuadrícula animado muy sutil (Estilo Premium Dashboard) */
+        .moving-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200vw;
+            height: 200vh;
+            background-size: 50px 50px;
+            background-image:
+                linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+            z-index: 0;
+            transform: translate(-50px, -50px);
+            animation: panGrid 40s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes panGrid {
+            0% {
+                transform: translate(0, 0);
+            }
+
+            100% {
+                transform: translate(-50px, -50px);
+            }
+        }
+
+        /* 2. Canvas interactivo de red sobre la cuadrícula */
+        #network-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* 3. Contenedor Central para la Imagen Principal */
+        .center-content {
+            position: relative;
+            z-index: 10;
+        }
+
+        .hero-image {
+            max-width: 550px;
+            width: 85vw;
+            height: auto;
+            border-radius: 40px;
+
+            /* Adaptación de imagen claroscuro */
+            mix-blend-mode: normal;
+
+            /* Sombra multicapa translúcida y color original mantenido */
+            filter:
+                drop-shadow(0 25px 50px rgba(79, 70, 229, 0.35)) drop-shadow(0 0 20px rgba(6, 182, 212, 0.2));
+            /* Animación de flotación orgánica, suave */
+            animation: hero-float 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        @keyframes hero-float {
+
+            0%,
+            100% {
+                transform: translateY(0) scale(1);
+                filter: drop-shadow(0 25px 50px rgba(79, 70, 229, 0.35)) drop-shadow(0 0 20px rgba(6, 182, 212, 0.2));
+            }
+
+            50% {
+                transform: translateY(-18px) scale(1.02);
+                filter: drop-shadow(0 35px 60px rgba(79, 70, 229, 0.45)) drop-shadow(0 0 30px rgba(6, 182, 212, 0.35));
+            }
+        }
+
+        /* 4. Glassmorphism: Tarjetas de Peticiones Flotantes */
+        #badges-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+            perspective: 1000px;
+        }
+
+        .glass-badge {
+            position: absolute;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 10px 20px;
+            box-shadow: var(--glass-shadow);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+            /* Tipografía monospaciada limpia para código/peticiones */
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            opacity: 0;
+            will-change: transform, opacity;
+
+            /* Animamos individualmente con CSS Variables */
+            animation: elegant-float var(--duration) cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        .badge-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 10px currentColor;
+            /* Resplandor natural del color */
+        }
+
+        .method {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        /* Colores según el método HTTP / Tipo */
+        .method.get {
+            color: var(--primary);
+        }
+
+        .method.post {
+            color: var(--success);
+        }
+
+        .method.put {
+            color: var(--warning);
+        }
+
+        .method.delete {
+            color: var(--danger);
+        }
+
+        .method.ws {
+            color: var(--secondary);
+        }
+
+        .method.json {
+            color: var(--accent);
+        }
+
+        .path {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .status {
+            background: rgba(15, 23, 42, 0.6);
+            /* Fondo interior dark glass */
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-left: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Trayectoria de burbuja o globo elegante (Sube y tiene ligera deriva horizontal) */
+        @keyframes elegant-float {
+            0% {
+                opacity: 0;
+                transform: translate(var(--start-x), var(--start-y)) scale(0.8) rotateX(15deg) translateY(20px);
+            }
+
+            15% {
+                opacity: 1;
+                transform: translate(calc(var(--start-x) + var(--drift-x)*0.2), calc(var(--start-y) - var(--travel-y)*0.2)) scale(1) rotateX(0deg) translateY(0);
+            }
+
+            85% {
+                opacity: 1;
+                transform: translate(calc(var(--start-x) + var(--drift-x)*0.8), calc(var(--start-y) - var(--travel-y)*0.8)) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(calc(var(--start-x) + var(--drift-x)), calc(var(--start-y) - var(--travel-y))) scale(0.9) translateY(-30px);
+            }
         }
     </style>
 </head>
 
 <body>
-    <h1>PotroNET API</h1>
-    <p>API is running successfully. Base URL for endpoints is <code>/api</code>.</p>
+
+    <div class="moving-grid"></div>
+    <canvas id="network-canvas"></canvas>
+
+    <div id="badges-container"></div>
+
+    <div class="center-content">
+        <img src="/hero.png" alt="Potro" class="hero-image" />
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. Efecto Moderno de Grafo y Partículas
+        // ==========================================
+        const canvas = document.getElementById('network-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const numNodes = 85; // Más partículas/nodos como antes
+        const connectionDist = 180;
+        const nodes = [];
+
+        class Node {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                // Velocidades lentas y calmadas
+                this.vx = (Math.random() - 0.5) * 0.6;
+                this.vy = (Math.random() - 0.5) * 0.6;
+                // Radios pequeños y elegantes
+                this.radius = Math.random() * 1.5 + 1;
+                this.alphaOrig = Math.random() * 0.4 + 0.1;
+                this.alpha = this.alphaOrig;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(6, 182, 212, ${this.alpha})`; // Color cian/azul para los nodos como querías
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < numNodes; i++) nodes.push(new Node());
+
+        function drawNetwork() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            nodes.forEach(node => {
+                node.update();
+                node.draw();
+            });
+
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < connectionDist) {
+                        const alphaLine = (1 - dist / connectionDist);
+
+                        // Creación de una línea que parece un cable de fibra óptica muy limpio
+                        ctx.beginPath();
+                        ctx.moveTo(nodes[i].x, nodes[i].y);
+                        ctx.lineTo(nodes[j].x, nodes[j].y);
+
+                        // Gradiente entre primario (índigo) y secundario (cian)
+                        const grad = ctx.createLinearGradient(nodes[i].x, nodes[i].y, nodes[j].x, nodes[j].y);
+                        grad.addColorStop(0, `rgba(79, 70, 229, ${alphaLine * 0.2})`);
+                        grad.addColorStop(1, `rgba(6, 182, 212, ${alphaLine * 0.2})`);
+
+                        ctx.strokeStyle = grad;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+
+                        // Tráfico de datos animado (pequeños pulsos) moviéndose entre nodos
+                        if (Math.random() > 0.995) {
+                            ctx.beginPath();
+                            const position = (Date.now() % 3000) / 3000; // Oscila de 0 a 1 continuamente
+                            const px = nodes[i].x - (dx * position);
+                            const py = nodes[i].y - (dy * position);
+                            ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+                            ctx.fillStyle = `rgba(16, 185, 129, ${alphaLine})`; // Emerald tracker
+
+                            // Efecto de resplandor para el paquete de datos
+                            ctx.shadowBlur = 8;
+                            ctx.shadowColor = '#10B981';
+                            ctx.fill();
+                            ctx.shadowBlur = 0;
+                        }
+                    }
+                }
+            }
+            requestAnimationFrame(drawNetwork);
+        }
+        drawNetwork();
+
+
+        // ==========================================
+        // 2. Sistema de Insignias Flotantes (Glassmorphism)
+        // ==========================================
+        const badgesContainer = document.getElementById('badges-container');
+
+        // Catálogo de peticiones de ejemplo para dar variedad
+        const apiEndpoints = [
+            { method: 'GET', path: '/api/v1/users', code: '#4F46E5', status: '200' },
+            { method: 'POST', path: '/auth/login', code: '#10B981', status: '201' },
+            { method: 'PUT', path: '/profiles/me', code: '#F59E0B', status: '200' },
+            { method: 'DELETE', path: '/sessions/old', code: '#EF4444', status: '204' },
+            { method: 'GET', path: '/api/v1/professors', code: '#4F46E5', status: '200' },
+            { method: 'WS', path: 'realtime-feed', code: '#06B6D4', status: 'Live' },
+            { method: 'JSON', path: 'payload-sync', code: '#8B5CF6', status: '2ms' },
+        ];
+
+        function createGlassBadge() {
+            const badge = document.createElement('div');
+            badge.className = 'glass-badge';
+
+            // Selección aleatoria de datos
+            const data = apiEndpoints[Math.floor(Math.random() * apiEndpoints.length)];
+            const methodClass = data.method.toLowerCase();
+
+            badge.innerHTML = `
+                <div class="badge-indicator" style="background-color: ${data.code}; color: ${data.code}"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="method ${methodClass}">${data.method}</span>
+                    <span class="path">${data.path}</span>
+                    <span class="status">${data.status}</span>
+                </div>
+            `;
+
+            // Nueva lógica de spawn más limpia y orquestada:
+            // Aparecen en la zona inferior/media pero distribuidos lateralmente,
+            // evitando cruzar en línea recta incómoda; en su lugar suben orgánicamente ("burbujas").
+
+            // Lado izquierdo o derecho para no tapar tanto el centro de golpe
+            const isLeft = Math.random() > 0.5;
+            // X inicial: 5% a 35% del lado izquierdo, O 65% a 95% del lado derecho
+            const startX = isLeft ? 5 + Math.random() * 30 : 65 + Math.random() * 30;
+            // Y inicial: Siempre abajo o en medio bajo de la pantalla (70vh a 110vh)
+            const startY = 70 + Math.random() * 40;
+
+            // Qué tanto se mueve hacia los lados mientras sube (-10vw a +10vw)
+            const driftX = (Math.random() - 0.5) * 20;
+            // Cuánto sube en total (50vh a 90vh de recorrido vertical)
+            const travelY = 50 + Math.random() * 40;
+
+            // Inyección de variables CSS para la interpolación en el @keyframes
+            badge.style.setProperty('--start-x', `${startX}vw`);
+            badge.style.setProperty('--start-y', `${startY}vh`);
+            badge.style.setProperty('--drift-x', `${driftX}vw`);
+            badge.style.setProperty('--travel-y', `${travelY}vh`);
+
+            // Duración suave e hipnótica, lenta (de 10s a 18s)
+            const duration = 10 + Math.random() * 8;
+            badge.style.setProperty('--duration', `${duration}s`);
+
+            // Ligeras variaciones de escala
+            const scale = 0.85 + Math.random() * 0.3; // 0.85x a 1.15x
+            badge.style.transform = `scale(${scale})`; // (se sobrescribe en la animación pero ayuda de base)
+
+            badgesContainer.appendChild(badge);
+
+            // Destrucción optimizada de nodos del DOM cuando terminan de flotar
+            setTimeout(() => {
+                badge.remove();
+            }, duration * 1000);
+        }
+
+        // Crear insignias continuas pero a un ritmo controlado y elegante (1 cada 2.8 segundos)
+        setInterval(createGlassBadge, 2800);
+
+        // Disparo (burst) inicial al abrir la página para llenar la pantalla rítmicamente (menos peticiones iniciales)
+        for (let i = 0; i < 5; i++) {
+            // Un retraso aleatorio para no poner las 5 al mismo exacto milisegundo
+            setTimeout(createGlassBadge, Math.random() * 3000);
+        }
+    </script>
 </body>
 
 </html>
