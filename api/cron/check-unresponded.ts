@@ -8,10 +8,10 @@ import { unrespondedMessageTemplate } from '../../server/lib/email-templates';
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
     try {
         const now = new Date();
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-        const oneHour15Ago = new Date(now.getTime() - 75 * 60 * 1000);
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
-        // Mensajes enviados en la ventana de 60-75 min atrás
+        // Mensajes enviados en las últimas 24-48h (ventana del día anterior)
         const { data: candidates } = await supabaseAdmin
             .from('messages')
             .select(`
@@ -19,8 +19,8 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
                 sender:profiles!messages_sender_id_fkey(full_name),
                 receiver:profiles!messages_receiver_id_fkey(full_name, email)
             `)
-            .gte('created_at', oneHour15Ago.toISOString())
-            .lte('created_at', oneHourAgo.toISOString());
+            .gte('created_at', twoDaysAgo.toISOString())
+            .lte('created_at', oneDayAgo.toISOString());
 
         if (!candidates?.length) return res.status(200).json({ checked: 0, reminded: 0 });
 
@@ -43,7 +43,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
             if (count === 0) {
                 const senderName = sender?.full_name || 'Alguien';
                 const preview = msg.content.length > 120 ? msg.content.slice(0, 120) + '…' : msg.content;
-                const hoursAgo = Math.round((now.getTime() - new Date(msg.created_at).getTime()) / (60 * 60 * 1000));
+                const hoursAgo = Math.max(1, Math.round((now.getTime() - new Date(msg.created_at).getTime()) / (60 * 60 * 1000)));
 
                 await sendEmail(
                     receiver.email,
