@@ -15,7 +15,7 @@ import { resourcesIndex } from '../server/routes/resources';
 import { searchAll } from '../server/routes/search';
 import { subjectsIndex, subjectsUser } from '../server/routes/subjects';
 import { tutoringIndex, tutoringRequests } from '../server/routes/tutoring';
-import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications } from '../server/routes/admin';
+import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications, adminSubjects } from '../server/routes/admin';
 
 // Health check handler
 function health(_req: VercelRequest, res: VercelResponse) {
@@ -96,6 +96,7 @@ const routes: Route[] = [
     { pattern: ['admin', 'publications'], handler: adminPublications },
     { pattern: ['admin', 'professor-requests'], handler: adminProfessorRequests },
     { pattern: ['admin', 'notifications'], handler: adminNotifications },
+    { pattern: ['admin', 'subjects'], handler: adminSubjects },
 ];
 
 function matchRoute(pathSegments: string[]): { handler: Handler; params: string[] } | null {
