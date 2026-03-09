@@ -51,6 +51,18 @@
             padding: 0;
         }
 
+        html,
+        body {
+            overflow-x: hidden;
+            width: 100vw;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            touch-action: pan-y;
+            /* Permite scroll vertical pero bloquea pinch-zoom si se desea, o simplemente previene scroll lateral */
+        }
+
         body {
             font-family: 'Outfit', system-ui, -apple-system, sans-serif;
             background-color: var(--bg-color);
@@ -58,7 +70,8 @@
                 radial-gradient(circle at 10% 20%, rgba(79, 70, 229, 0.05), transparent 30%),
                 radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.05), transparent 30%);
             color: var(--text-main);
-            height: 100vh;
+            min-height: 100vh;
+            width: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -252,6 +265,26 @@
                 transform: translate(calc(var(--start-x) + var(--drift-x)), calc(var(--start-y) - var(--travel-y))) scale(0.9) translateY(-30px);
             }
         }
+
+        /* 5. Ajustes Mobile */
+        @media (max-width: 768px) {
+            .glass-badge {
+                padding: 6px 14px;
+                font-size: 0.75rem;
+                gap: 8px;
+                border-radius: 12px;
+            }
+
+            .status {
+                font-size: 0.65rem;
+                padding: 1px 6px;
+            }
+
+            .hero-image {
+                max-width: 85vw;
+                border-radius: 20px;
+            }
+        }
     </style>
 </head>
 
@@ -274,14 +307,20 @@
         const ctx = canvas.getContext('2d');
 
         function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            canvas.style.width = `${window.innerWidth}px`;
+            canvas.style.height = `${window.innerHeight}px`;
+            ctx.scale(dpr, dpr);
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        const numNodes = 85; // Más partículas/nodos como antes
-        const connectionDist = 180;
+        // Constantes responsivas
+        const isMobile = window.innerWidth < 768;
+        const numNodes = isMobile ? 35 : 85;
+        const connectionDist = isMobile ? 120 : 180;
         const nodes = [];
 
         class Node {
@@ -406,19 +445,25 @@
             // Aparecen en la zona inferior/media pero distribuidos lateralmente,
             // evitando cruzar en línea recta incómoda; en su lugar suben orgánicamente ("burbujas").
 
-            // Lado izquierdo o derecho para no tapar tanto el centro de golpe
-            const isLeft = Math.random() > 0.5;
-            // X inicial: 5% a 35% del lado izquierdo, O 65% a 95% del lado derecho
-            const startX = isLeft ? 5 + Math.random() * 30 : 65 + Math.random() * 30;
-            // Y inicial: Siempre abajo o en medio bajo de la pantalla (70vh a 110vh)
-            const startY = 70 + Math.random() * 40;
+            // Lógica de aparición inteligente
+            const mobile = window.innerWidth < 768;
 
-            // Qué tanto se mueve hacia los lados mientras sube (-10vw a +10vw)
-            const driftX = (Math.random() - 0.5) * 20;
-            // Cuánto sube en total (50vh a 90vh de recorrido vertical)
-            const travelY = 50 + Math.random() * 40;
+            // En Mobile distribuimos en todo el ancho, en Desktop a los lados
+            let startX;
+            if (mobile) {
+                startX = 5 + Math.random() * 85; // Ocupar casi todo el ancho
+            } else {
+                const isLeft = Math.random() > 0.5;
+                startX = isLeft ? 5 + Math.random() * 30 : 65 + Math.random() * 30;
+            }
 
-            // Inyección de variables CSS para la interpolación en el @keyframes
+            const startY = 80 + Math.random() * 30; // Nacen un poco más abajo del viewport
+
+            // Variaciones de trayectoria
+            const driftX = (Math.random() - 0.5) * (mobile ? 15 : 25);
+            const travelY = 60 + Math.random() * 50;
+
+            // Inyección de variables CSS
             badge.style.setProperty('--start-x', `${startX}vw`);
             badge.style.setProperty('--start-y', `${startY}vh`);
             badge.style.setProperty('--drift-x', `${driftX}vw`);
