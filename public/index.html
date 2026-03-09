@@ -55,12 +55,7 @@
         body {
             overflow-x: hidden;
             width: 100vw;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            touch-action: pan-y;
-            /* Permite scroll vertical pero bloquea pinch-zoom si se desea, o simplemente previene scroll lateral */
+            max-width: 100%;
         }
 
         body {
@@ -84,7 +79,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 200vw;
+            width: 200%;
             height: 200vh;
             background-size: 50px 50px;
             background-image:
@@ -163,6 +158,8 @@
             z-index: 5;
             pointer-events: none;
             perspective: 1000px;
+            overflow: hidden;
+            /* Evita que los badges que salgan por los lados hagan scroll */
         }
 
         .glass-badge {
@@ -266,11 +263,11 @@
             }
         }
 
-        /* 5. Ajustes Mobile */
-        @media (max-width: 768px) {
+        /* Media Query para Móviles: Ajustes de tamaño para las insignias */
+        @media (max-width: 640px) {
             .glass-badge {
-                padding: 6px 14px;
-                font-size: 0.75rem;
+                padding: 6px 12px;
+                font-size: 0.70rem;
                 gap: 8px;
                 border-radius: 12px;
             }
@@ -278,11 +275,6 @@
             .status {
                 font-size: 0.65rem;
                 padding: 1px 6px;
-            }
-
-            .hero-image {
-                max-width: 85vw;
-                border-radius: 20px;
             }
         }
     </style>
@@ -307,20 +299,14 @@
         const ctx = canvas.getContext('2d');
 
         function resizeCanvas() {
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = window.innerWidth * dpr;
-            canvas.height = window.innerHeight * dpr;
-            canvas.style.width = `${window.innerWidth}px`;
-            canvas.style.height = `${window.innerHeight}px`;
-            ctx.scale(dpr, dpr);
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Constantes responsivas
-        const isMobile = window.innerWidth < 768;
-        const numNodes = isMobile ? 35 : 85;
-        const connectionDist = isMobile ? 120 : 180;
+        const numNodes = 85; // Más partículas/nodos como antes
+        const connectionDist = 180;
         const nodes = [];
 
         class Node {
@@ -441,29 +427,21 @@
                 </div>
             `;
 
-            // Nueva lógica de spawn más limpia y orquestada:
-            // Aparecen en la zona inferior/media pero distribuidos lateralmente,
-            // evitando cruzar en línea recta incómoda; en su lugar suben orgánicamente ("burbujas").
+            // Nueva lógica de distribución adaptable a móviles o escritorio
+            // Repartimos el inicio a lo ancho de toda la pantalla (de lado a lado)
+            // de 5vw a 85vw para que no se amontonen solo en la derecha
+            const startX = 5 + Math.random() * 80;
 
-            // Lógica de aparición inteligente
-            const mobile = window.innerWidth < 768;
+            // Y inicial: Siempre abajo pero con mucha más dispersión en altura (75vh a 120vh)
+            const startY = 75 + Math.random() * 45;
 
-            // En Mobile distribuimos en todo el ancho, en Desktop a los lados
-            let startX;
-            if (mobile) {
-                startX = 5 + Math.random() * 85; // Ocupar casi todo el ancho
-            } else {
-                const isLeft = Math.random() > 0.5;
-                startX = isLeft ? 5 + Math.random() * 30 : 65 + Math.random() * 30;
-            }
+            // Qué tanto se mueve hacia los lados (Deriva horizontal). Más pronunciada a veces.
+            const driftX = (Math.random() - 0.5) * 30;
 
-            const startY = 80 + Math.random() * 30; // Nacen un poco más abajo del viewport
-
-            // Variaciones de trayectoria
-            const driftX = (Math.random() - 0.5) * (mobile ? 15 : 25);
+            // Cuánto sube en total (60vh a 110vh de recorrido vertical, para cruzar toda la pantalla)
             const travelY = 60 + Math.random() * 50;
 
-            // Inyección de variables CSS
+            // Inyección de variables CSS para la interpolación en el @keyframes
             badge.style.setProperty('--start-x', `${startX}vw`);
             badge.style.setProperty('--start-y', `${startY}vh`);
             badge.style.setProperty('--drift-x', `${driftX}vw`);
