@@ -1,10 +1,24 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-// Admin client with service role key (for server-side operations)
-export const supabaseAdmin = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy singleton — evita crash al arrancar si las env vars no están disponibles aún
+let _supabaseAdmin: SupabaseClient | null = null;
+
+export function getSupabaseAdmin(): SupabaseClient {
+    if (!_supabaseAdmin) {
+        _supabaseAdmin = createClient(
+            process.env.SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+    }
+    return _supabaseAdmin;
+}
+
+// Alias para compatibilidad con imports existentes (proxy object)
+export const supabaseAdmin = new Proxy({} as SupabaseClient, {
+    get(_target, prop) {
+        return (getSupabaseAdmin() as unknown as Record<string | symbol, unknown>)[prop];
+    },
+});
 
 // Create a client with the user's JWT for RLS
 export function createSupabaseClient(authHeader?: string) {
