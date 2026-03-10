@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { cors } from '../server/lib/cors';
+import { rateLimit } from '../server/lib/rate-limit';
 
 // Route imports
 import { login, register, me } from '../server/routes/auth';
@@ -148,6 +149,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         } catch { /* ignore fallback errors */ }
     }
+
+    // Rate limiting
+    if (rateLimit(req, res, pathSegments)) return;
 
     // Find matching route
     const matched = matchRoute(pathSegments);
