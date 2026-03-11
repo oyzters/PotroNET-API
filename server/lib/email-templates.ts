@@ -1,5 +1,15 @@
 const BASE_URL = 'https://potronet.vercel.app';
 
+/** Escapa caracteres HTML para prevenir XSS en templates de email */
+function esc(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 const wrapper = (content: string) => `
 <!DOCTYPE html>
 <html lang="es">
@@ -55,8 +65,8 @@ export function firstMessageTemplate(senderName: string, messagePreview: string)
 
         <div style="background:#222;border-radius:12px;padding:20px;margin-bottom:24px;border-left:3px solid #6d28d9;">
           <p style="margin:0 0 6px;color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">De</p>
-          <p style="margin:0 0 12px;color:#fff;font-size:16px;font-weight:600;">${senderName}</p>
-          <p style="margin:0;color:#ccc;font-size:14px;line-height:1.5;">"${messagePreview}"</p>
+          <p style="margin:0 0 12px;color:#fff;font-size:16px;font-weight:600;">${esc(senderName)}</p>
+          <p style="margin:0;color:#ccc;font-size:14px;line-height:1.5;">"${esc(messagePreview)}"</p>
         </div>
 
         <a href="${BASE_URL}/messages" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
@@ -66,13 +76,14 @@ export function firstMessageTemplate(senderName: string, messagePreview: string)
 }
 
 export function firstMessageOfDayTemplate(senderName: string, messagePreview: string): string {
+    const safe = esc(senderName);
     return wrapper(`
         <h2 style="margin:0 0 8px;color:#ffffff;font-size:20px;">Tienes mensajes de hoy 📬</h2>
-        <p style="margin:0 0 24px;color:#888;font-size:14px;">${senderName} te escribió hoy en PotroNET</p>
+        <p style="margin:0 0 24px;color:#888;font-size:14px;">${safe} te escribió hoy en PotroNET</p>
 
         <div style="background:#222;border-radius:12px;padding:20px;margin-bottom:24px;border-left:3px solid #f59e0b;">
-          <p style="margin:0 0 6px;color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Último mensaje de ${senderName}</p>
-          <p style="margin:0;color:#ccc;font-size:14px;line-height:1.5;">"${messagePreview}"</p>
+          <p style="margin:0 0 6px;color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Último mensaje de ${safe}</p>
+          <p style="margin:0;color:#ccc;font-size:14px;line-height:1.5;">"${esc(messagePreview)}"</p>
         </div>
 
         <a href="${BASE_URL}/messages" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
@@ -84,11 +95,11 @@ export function firstMessageOfDayTemplate(senderName: string, messagePreview: st
 export function unrespondedMessageTemplate(senderName: string, messagePreview: string, hoursAgo: number): string {
     return wrapper(`
         <h2 style="margin:0 0 8px;color:#ffffff;font-size:20px;">Tienes un mensaje sin responder ⏰</h2>
-        <p style="margin:0 0 24px;color:#888;font-size:14px;">Hace ${hoursAgo} hora${hoursAgo !== 1 ? 's' : ''}, ${senderName} te envió un mensaje</p>
+        <p style="margin:0 0 24px;color:#888;font-size:14px;">Hace ${hoursAgo} hora${hoursAgo !== 1 ? 's' : ''}, ${esc(senderName)} te envió un mensaje</p>
 
         <div style="background:#222;border-radius:12px;padding:20px;margin-bottom:24px;border-left:3px solid #ef4444;">
           <p style="margin:0 0 6px;color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Mensaje pendiente</p>
-          <p style="margin:0;color:#ccc;font-size:14px;line-height:1.5;">"${messagePreview}"</p>
+          <p style="margin:0;color:#ccc;font-size:14px;line-height:1.5;">"${esc(messagePreview)}"</p>
         </div>
 
         <a href="${BASE_URL}/messages" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
@@ -103,8 +114,8 @@ export function notificationTemplate(title: string, body: string): string {
         <p style="margin:0 0 24px;color:#888;font-size:14px;">Tienes una notificación en PotroNET</p>
 
         <div style="background:#222;border-radius:12px;padding:20px;margin-bottom:24px;border-left:3px solid #6d28d9;">
-          <p style="margin:0 0 8px;color:#fff;font-size:15px;font-weight:600;">${title}</p>
-          ${body ? `<p style="margin:0;color:#ccc;font-size:14px;line-height:1.5;">${body}</p>` : ''}
+          <p style="margin:0 0 8px;color:#fff;font-size:15px;font-weight:600;">${esc(title)}</p>
+          ${body ? `<p style="margin:0;color:#ccc;font-size:14px;line-height:1.5;">${esc(body)}</p>` : ''}
         </div>
 
         <a href="${BASE_URL}/notifications" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">

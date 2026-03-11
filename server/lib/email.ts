@@ -1,16 +1,25 @@
 import { Resend } from 'resend';
 
-// Sin dominio propio Resend solo permite enviar desde onboarding@resend.dev
-// Cuando tengas dominio verificado cambia esto a: noreply@tudominio.com
-const FROM = 'PotroNET <onboarding@resend.dev>';
+// Configura RESEND_FROM en tu .env cuando tengas dominio verificado
+// Ejemplo: RESEND_FROM=PotroNET <noreply@potronet.app>
+// Sin dominio propio Resend solo permite enviar a la dirección del dueño de la cuenta
+const FROM = process.env.RESEND_FROM || 'PotroNET <onboarding@resend.dev>';
+
+let resend: Resend | null = null;
+
+function getClient(): Resend | null {
+    if (resend) return resend;
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) return null;
+    resend = new Resend(apiKey);
+    return resend;
+}
 
 export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) return;
+    const client = getClient();
+    if (!client) return;
     try {
-        // Inicializar dentro de la función para evitar crash si la env var no está configurada
-        const resend = new Resend(apiKey);
-        await resend.emails.send({ from: FROM, to, subject, html });
+        await client.emails.send({ from: FROM, to, subject, html });
     } catch (err) {
         console.error('[email] Error sending to', to, err);
     }
