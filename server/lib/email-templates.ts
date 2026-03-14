@@ -123,3 +123,18 @@ export function notificationTemplate(title: string, body: string): string {
         </a>
     `);
 }
+
+export function friendRequestTemplate(senderName: string): string {
+    return wrapper(`
+        <h2 style="margin:0 0 8px;color:#ffffff;font-size:20px;">Nueva solicitud de amistad 🤝</h2>
+        <p style="margin:0 0 24px;color:#888;font-size:14px;">Tienes una nueva solicitud en PotroNET</p>
+
+        <div style="background:#222;border-radius:12px;padding:20px;margin-bottom:24px;border-left:3px solid #6d28d9;">
+          <p style="margin:0 0 8px;color:#fff;font-size:15px;font-weight:600;">${esc(senderName)} quiere conectar contigo.</p>
+        </div>
+
+        <a href="${BASE_URL}/friends" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
+          Revisar solicitud
+        </a>
+    `);
+}
