@@ -56,14 +56,17 @@ async function messagesGet(req: VercelRequest, res: VercelResponse, userId: stri
 }
 
 async function messagesPost(req: VercelRequest, res: VercelResponse, userId: string) {
-    const { receiver_id, content } = req.body;
+    const { receiver_id, content, reply_to } = req.body;
     if (!receiver_id || !content?.trim()) return res.status(400).json({ error: 'receiver_id and content are required' });
     if (content.length > 1000) return res.status(400).json({ error: 'El mensaje no puede exceder 1000 caracteres' });
 
     try {
         const supabase = createSupabaseClient(req.headers.authorization);
+        const insertData: any = { sender_id: userId, receiver_id, content: content.trim() };
+        if (reply_to) insertData.reply_to = reply_to;
+        
         const { data, error } = await supabase
-            .from('messages').insert({ sender_id: userId, receiver_id, content: content.trim() }).select().single();
+            .from('messages').insert(insertData).select().single();
         if (error) return res.status(400).json({ error: error.message });
 
         // Disparar emails en background (sin bloquear la respuesta)

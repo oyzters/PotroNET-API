@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthUser } from '../lib/auth';
 import { createSupabaseClient, supabaseAdmin } from '../lib/supabase';
+import { sendEmail } from '../lib/email';
+import { friendRequestTemplate } from '../lib/email-templates';
 
 // GET|POST /friends
 export async function friendsIndex(req: VercelRequest, res: VercelResponse) {
@@ -81,6 +83,15 @@ async function friendsPost(req: VercelRequest, res: VercelResponse, userId: stri
             content: `${sender?.full_name || 'Alguien'} te envió una solicitud de amistad`,
             reference_id: data.id, is_read: false,
         });
+
+        const { data: addressee } = await supabaseAdmin.from('profiles').select('email').eq('id', addressee_id).single();
+        if (addressee?.email && sender?.full_name) {
+            sendEmail(
+                addressee.email,
+                `Nueva solicitud de amistad de ${sender.full_name}`,
+                friendRequestTemplate(sender.full_name)
+            ).catch(() => {});
+        }
 
         return res.status(201).json({ friendship: data });
     } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
