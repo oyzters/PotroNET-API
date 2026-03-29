@@ -6,11 +6,18 @@ import { Resend } from 'resend';
 const FROM = process.env.RESEND_FROM || 'PotroNET <onboarding@resend.dev>';
 
 let resend: Resend | null = null;
+let warnedMissingKey = false;
 
 function getClient(): Resend | null {
     if (resend) return resend;
     const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) return null;
+    if (!apiKey) {
+        if (!warnedMissingKey) {
+            console.warn('[Email] RESEND_API_KEY not configured — emails will not be sent');
+            warnedMissingKey = true;
+        }
+        return null;
+    }
     resend = new Resend(apiKey);
     return resend;
 }
