@@ -6,16 +6,19 @@ import { rateLimit } from '../server/lib/rate-limit';
 import { login, register, me } from '../server/routes/auth';
 import { listCareers } from '../server/routes/careers';
 import { friendsIndex, friendById } from '../server/routes/friends';
+import { followsIndex, followStatus, followById } from '../server/routes/follows';
+import { rankingsIndex } from '../server/routes/rankings';
 import { messagesIndex, messagesByUser } from '../server/routes/messages';
 import { notificationsIndex } from '../server/routes/notifications';
 import { professorsList, professorById, professorRequests, professorReviews } from '../server/routes/professors';
 import { profilesList, profileById } from '../server/routes/profiles';
-import { publicationsIndex, publicationById, publicationLike } from '../server/routes/publications';
+import { publicationsIndex, publicationById, publicationLike, publicationComments } from '../server/routes/publications';
 import { reportsIndex } from '../server/routes/reports';
 import { resourcesIndex } from '../server/routes/resources';
 import { searchAll } from '../server/routes/search';
 import { subjectsIndex, subjectsUser } from '../server/routes/subjects';
-import { tutoringIndex, tutoringRequests } from '../server/routes/tutoring';
+import { tutoringIndex, tutoringRequests, tutoringSessions, tutoringSessionById } from '../server/routes/tutoring';
+import { settingsIndex } from '../server/routes/settings';
 import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications, adminSubjects } from '../server/routes/admin';
 
 // Health check handler
@@ -47,9 +50,17 @@ const routes: Route[] = [
     // Careers
     { pattern: ['careers'], handler: listCareers },
 
-    // Friends
+    // Friends (legacy)
     { pattern: ['friends'], handler: friendsIndex },
     { pattern: ['friends', ':id'], handler: friendById },
+
+    // Follows
+    { pattern: ['follows', 'status', ':userId'], handler: followStatus },
+    { pattern: ['follows'], handler: followsIndex },
+    { pattern: ['follows', ':userId'], handler: followById },
+
+    // Rankings
+    { pattern: ['rankings'], handler: rankingsIndex },
 
     // Messages
     { pattern: ['messages'], handler: messagesIndex },
@@ -70,6 +81,7 @@ const routes: Route[] = [
 
     // Publications (specific routes before parameterized)
     { pattern: ['publications', ':id', 'likes'], handler: publicationLike },
+    { pattern: ['publications', ':id', 'comments'], handler: publicationComments },
     { pattern: ['publications'], handler: publicationsIndex },
     { pattern: ['publications', ':id'], handler: publicationById },
 
@@ -86,7 +98,12 @@ const routes: Route[] = [
     { pattern: ['subjects', 'user'], handler: subjectsUser },
     { pattern: ['subjects'], handler: subjectsIndex },
 
+    // Settings
+    { pattern: ['settings'], handler: settingsIndex },
+
     // Tutoring
+    { pattern: ['tutoring', 'sessions', ':id'], handler: tutoringSessionById },
+    { pattern: ['tutoring', 'sessions'], handler: tutoringSessions },
     { pattern: ['tutoring', 'requests'], handler: tutoringRequests },
     { pattern: ['tutoring'], handler: tutoringIndex },
 

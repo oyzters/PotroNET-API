@@ -30,6 +30,15 @@ async function messagesGet(req: VercelRequest, res: VercelResponse, userId: stri
         const { data: profiles } = await supabase
             .from('profiles').select('id, full_name, avatar_url, email').in('id', Array.from(contactIds));
 
+        // Check mutual follows for all contacts at once
+        const contactArray = Array.from(contactIds);
+        const { data: userFollows } = await supabase
+            .from('follows').select('following_id').eq('follower_id', userId).in('following_id', contactArray);
+        const { data: followsUser } = await supabase
+            .from('follows').select('follower_id').eq('following_id', userId).in('follower_id', contactArray);
+        const iFollowSet = new Set((userFollows || []).map(f => f.following_id));
+        const followsMeSet = new Set((followsUser || []).map(f => f.follower_id));
+
         const conversations = await Promise.all(
             (profiles || []).map(async (profile) => {
                 const { data: lastMsg } = await supabase
@@ -41,7 +50,9 @@ async function messagesGet(req: VercelRequest, res: VercelResponse, userId: stri
                     .from('messages').select('*', { count: 'exact', head: true })
                     .eq('sender_id', profile.id).eq('receiver_id', userId).eq('is_read', false);
 
-                return { user: profile, lastMessage: lastMsg, unread: unread || 0 };
+                const isMutual = iFollowSet.has(profile.id) && followsMeSet.has(profile.id);
+
+                return { user: profile, lastMessage: lastMsg, unread: unread || 0, is_request: !isMutual };
             })
         );
 
@@ -62,9 +73,23 @@ async function messagesPost(req: VercelRequest, res: VercelResponse, userId: str
 
     try {
         const supabase = createSupabaseClient(req.headers.authorization);
-        const insertData: any = { sender_id: userId, receiver_id, content: content.trim() };
+        // Check if they are mutual follows (friends)
+        const { data: mutualCheck } = await supabaseAdmin
+            .from('follows').select('id')
+            .eq('follower_id', userId).eq('following_id', receiver_id)
+            .maybeSingle();
+        const { data: reverseCheck } = await supabaseAdmin
+            .from('follows').select('id')
+            .eq('follower_id', receiver_id).eq('following_id', userId)
+            .maybeSingle();
+        const isFriends = !!mutualCheck && !!reverseCheck;
+
+        const insertData: any = {
+            sender_id: userId, receiver_id, content: content.trim(),
+            is_message_request: !isFriends,
+        };
         if (reply_to) insertData.reply_to = reply_to;
-        
+
         const { data, error } = await supabase
             .from('messages').insert(insertData).select().single();
         if (error) return res.status(400).json({ error: error.message });
