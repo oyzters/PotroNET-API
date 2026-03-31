@@ -1,4 +1,4 @@
-const BASE_URL = 'https://potronet.vercel.app';
+const BASE_URL = 'https://potronet.com';
 
 /** Escapa caracteres HTML para prevenir XSS en templates de email */
 function esc(str: string): string {
@@ -135,6 +135,72 @@ export function friendRequestTemplate(senderName: string): string {
 
         <a href="${BASE_URL}/friends" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
           Revisar solicitud
+        </a>
+    `);
+}
+
+export function warningTemplate(category: string, message: string): string {
+    const CATEGORY_LABELS: Record<string, string> = {
+        spam: 'Spam',
+        acoso: 'Acoso o bullying',
+        contenido_sexual: 'Contenido sexual inapropiado',
+        violencia: 'Violencia o amenazas',
+        informacion_falsa: 'Información falsa',
+        odio: 'Discurso de odio',
+        otro: 'Violación a las normas de la comunidad',
+    };
+    const label = CATEGORY_LABELS[category] || 'Violación a las normas';
+    return wrapper(`
+        <h2 style="margin:0 0 8px;color:#f59e0b;font-size:20px;">⚠️ Has recibido una advertencia</h2>
+        <p style="margin:0 0 24px;color:#888;font-size:14px;">El equipo de moderación de PotroNET ha revisado tu actividad</p>
+
+        <div style="background:#2d2000;border-radius:12px;padding:20px;margin-bottom:24px;border-left:3px solid #f59e0b;">
+          <p style="margin:0 0 6px;color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Categoría</p>
+          <p style="margin:0 0 12px;color:#f59e0b;font-size:15px;font-weight:600;">${esc(label)}</p>
+          <p style="margin:0 0 6px;color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Mensaje del moderador</p>
+          <p style="margin:0;color:#ccc;font-size:14px;line-height:1.5;">${esc(message)}</p>
+        </div>
+
+        <p style="margin:0 0 20px;color:#888;font-size:13px;line-height:1.6;">
+          Las advertencias reiteradas pueden resultar en la suspensión de tu cuenta. 
+          Te pedimos que revises las <a href="${BASE_URL}/guidelines" style="color:#6d28d9;">Normas de la Comunidad</a> de PotroNET.
+        </p>
+
+        <a href="${BASE_URL}/notifications" style="display:inline-block;background:#f59e0b;color:#000;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
+          Ver mis notificaciones
+        </a>
+    `);
+}
+
+export function contentRemovedTemplate(reason: string, category: string): string {
+    const CATEGORY_LABELS: Record<string, string> = {
+        spam: 'Spam',
+        acoso: 'Acoso o bullying',
+        contenido_sexual: 'Contenido sexual inapropiado',
+        violencia: 'Violencia o amenazas',
+        informacion_falsa: 'Información falsa',
+        odio: 'Discurso de odio',
+        otro: 'Violación a las normas',
+    };
+    const label = CATEGORY_LABELS[category] || 'Violación a las normas';
+    return wrapper(`
+        <h2 style="margin:0 0 8px;color:#ef4444;font-size:20px;">🗑️ Tu publicación fue eliminada</h2>
+        <p style="margin:0 0 24px;color:#888;font-size:14px;">Un moderador de PotroNET eliminó una de tus publicaciones</p>
+
+        <div style="background:#2d0000;border-radius:12px;padding:20px;margin-bottom:24px;border-left:3px solid #ef4444;">
+          <p style="margin:0 0 6px;color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Motivo</p>
+          <p style="margin:0 0 12px;color:#ef4444;font-size:15px;font-weight:600;">${esc(label)}</p>
+          ${reason ? `<p style="margin:0 0 6px;color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Nota adicional</p>
+          <p style="margin:0;color:#ccc;font-size:14px;line-height:1.5;">${esc(reason)}</p>` : ''}
+        </div>
+
+        <p style="margin:0 0 20px;color:#888;font-size:13px;line-height:1.6;">
+          Si crees que esto fue un error, puedes contactar al soporte. 
+          Recuerda revisar las <a href="${BASE_URL}/guidelines" style="color:#6d28d9;">Normas de la Comunidad</a>.
+        </p>
+
+        <a href="${BASE_URL}/feed" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
+          Volver al Feed
         </a>
     `);
 }

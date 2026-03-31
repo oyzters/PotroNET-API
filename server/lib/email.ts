@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 // Configura RESEND_FROM en tu .env cuando tengas dominio verificado
 // Ejemplo: RESEND_FROM=PotroNET <noreply@potronet.app>
 // Sin dominio propio Resend solo permite enviar a la dirección del dueño de la cuenta
-const FROM = process.env.RESEND_FROM || 'PotroNET <onboarding@resend.dev>';
+const FROM = process.env.RESEND_FROM || 'PotroNET <soporte@potronet.com>';
 
 let resend: Resend | null = null;
 let warnedMissingKey = false;

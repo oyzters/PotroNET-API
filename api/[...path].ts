@@ -20,6 +20,7 @@ import { subjectsIndex, subjectsUser } from '../server/routes/subjects';
 import { tutoringIndex, tutoringRequests, tutoringSessions, tutoringSessionById } from '../server/routes/tutoring';
 import { settingsIndex } from '../server/routes/settings';
 import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications, adminSubjects } from '../server/routes/admin';
+import { moderationRemovePublication, moderationRemoveComment, moderationWarnUser, moderationStats, moderationReports, moderationResolveReport, moderationUserHistory, moderationLog } from '../server/routes/moderation.routes';
 
 // Health check handler
 function health(_req: VercelRequest, res: VercelResponse) {
@@ -115,6 +116,16 @@ const routes: Route[] = [
     { pattern: ['admin', 'professor-requests'], handler: adminProfessorRequests },
     { pattern: ['admin', 'notifications'], handler: adminNotifications },
     { pattern: ['admin', 'subjects'], handler: adminSubjects },
+
+    // Moderation (admin + sudo in-app)
+    { pattern: ['moderation', 'stats'], handler: moderationStats },
+    { pattern: ['moderation', 'reports'], handler: moderationReports },
+    { pattern: ['moderation', 'log'], handler: moderationLog },
+    { pattern: ['moderation', 'publications', ':id', 'remove'], handler: moderationRemovePublication },
+    { pattern: ['moderation', 'comments', ':id', 'remove'], handler: moderationRemoveComment },
+    { pattern: ['moderation', 'users', ':id', 'warn'], handler: moderationWarnUser },
+    { pattern: ['moderation', 'users', ':id', 'history'], handler: moderationUserHistory },
+    { pattern: ['moderation', 'reports', ':id'], handler: moderationResolveReport },
 ];
 
 function matchRoute(pathSegments: string[]): { handler: Handler; params: string[] } | null {
