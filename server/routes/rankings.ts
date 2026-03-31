@@ -19,7 +19,8 @@ export async function rankingsIndex(req: VercelRequest, res: VercelResponse) {
         let query = admin
             .from('profiles')
             .select('id, full_name, avatar_url, reputation, followers_count, following_count, friends_count, semester, career_id, career:careers(id, name)')
-            .eq('is_banned', false);
+            .eq('is_banned', false)
+            .eq('role', 'user');
 
         if (careerId && careerId !== 'all') {
             query = query.eq('career_id', careerId);
