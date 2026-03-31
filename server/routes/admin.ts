@@ -21,11 +21,12 @@ export async function adminStats(req: VercelRequest, res: VercelResponse) {
             supabaseAdmin.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         ]);
 
-        const [usersByRole, bannedUsers, recentUsers] = await Promise.all([
+        const [usersByRole, bannedUsers, recentUsers, activeWarningsResult] = await Promise.all([
             supabaseAdmin.from('profiles').select('role'),
             supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('is_banned', true),
             supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true })
                 .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+            supabaseAdmin.from('user_warnings').select('*', { count: 'exact', head: true }),
         ]);
 
         const roleCounts = { user: 0, admin: 0, sudo: 0 };
@@ -40,6 +41,7 @@ export async function adminStats(req: VercelRequest, res: VercelResponse) {
                 totalTutoring: tutoringResult.count || 0, totalResources: resourcesResult.count || 0,
                 pendingReports: pendingReportsResult.count || 0, bannedUsers: bannedUsers.count || 0,
                 newUsersThisWeek: recentUsers.count || 0, usersByRole: roleCounts,
+                activeWarnings: activeWarningsResult.count || 0,
             },
         });
     } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
@@ -57,7 +59,7 @@ export async function adminUsers(req: VercelRequest, res: VercelResponse) {
             const search = req.query.search as string;
             const offset = (page - 1) * limit;
 
-            let query = supabaseAdmin.from('profiles').select(`*, career:careers(id, name)`, { count: 'exact' })
+            let query = supabaseAdmin.from('profiles').select(`*, career:careers(id, name), warnings:user_warnings!user_id(count)`, { count: 'exact' })
                 .order('created_at', { ascending: false }).range(offset, offset + limit - 1);
             if (search) query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
 
@@ -116,15 +118,19 @@ export async function adminReports(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'PATCH') {
-        const { report_id, status } = req.body;
+        const { report_id, status, resolution_note, resolved_content_deleted } = req.body;
         if (!report_id || !status) return res.status(400).json({ error: 'report_id and status are required' });
         const validStatuses = ['reviewed', 'resolved', 'dismissed'];
         if (!validStatuses.includes(status))
             return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
 
+        const updates: any = { status, reviewed_by: user!.id, resolved_at: new Date().toISOString() };
+        if (resolution_note !== undefined) updates.resolution_note = resolution_note;
+        if (resolved_content_deleted !== undefined) updates.resolved_content_deleted = resolved_content_deleted;
+
         try {
             const { data, error } = await supabaseAdmin.from('reports')
-                .update({ status, reviewed_by: user!.id }).eq('id', report_id)
+                .update(updates).eq('id', report_id)
                 .select(`*, reporter:profiles!reports_reporter_id_fkey(id, full_name, email)`).single();
             if (error) return res.status(400).json({ error: error.message });
             return res.status(200).json({ report: data });
@@ -143,11 +149,15 @@ export async function adminPublications(req: VercelRequest, res: VercelResponse)
         try {
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 20;
+            const search = req.query.search as string;
             const offset = (page - 1) * limit;
 
-            const { data, error, count } = await supabaseAdmin.from('publications')
-                .select(`*, author:profiles!publications_user_id_fkey(id, full_name, avatar_url, email)`, { count: 'exact' })
+            let query = supabaseAdmin.from('publications')
+                .select(`*, author:profiles!publications_user_id_fkey(id, full_name, avatar_url, email), reports:reports!reports_target_id_fkey(count)`, { count: 'exact' })
                 .order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+            if (search) query = query.ilike('content', `%${search}%`);
+
+            const { data, error, count } = await query;
             if (error) return res.status(400).json({ error: error.message });
             return res.status(200).json({
                 publications: data, pagination: { page, limit, total: count, totalPages: Math.ceil((count || 0) / limit) },
