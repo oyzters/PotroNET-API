@@ -15,6 +15,7 @@ import { profilesList, profileById } from '../server/routes/profiles';
 import { publicationsIndex, publicationById, publicationLike, publicationComments } from '../server/routes/publications';
 import { reportsIndex } from '../server/routes/reports';
 import { resourcesIndex } from '../server/routes/resources';
+import { uploadsSignedUrl } from '../server/routes/uploads';
 import { searchAll } from '../server/routes/search';
 import { subjectsIndex, subjectsUser } from '../server/routes/subjects';
 import { tutoringIndex, tutoringRequests, tutoringSessions, tutoringSessionById } from '../server/routes/tutoring';
@@ -91,6 +92,9 @@ const routes: Route[] = [
 
     // Resources
     { pattern: ['resources'], handler: resourcesIndex },
+
+    // Uploads (direct-to-R2 signed URLs)
+    { pattern: ['uploads', 'signed-url'], handler: uploadsSignedUrl },
 
     // Search
     { pattern: ['search'], handler: searchAll },
