@@ -56,30 +56,65 @@ async function publicationsPost(req: VercelRequest, res: VercelResponse) {
     if (!user) return res.status(401).json({ error: 'No autenticado' });
 
     const { content, tags, media, image_url } = req.body;
-    if (!content || content.trim().length === 0) return res.status(400).json({ error: 'El contenido es requerido' });
-    if (content.length > 500) return res.status(400).json({ error: 'El contenido no puede exceder 500 caracteres' });
+    const contentStr = typeof content === 'string' ? content : '';
+    const trimmedContent = contentStr.trim();
 
-    const moderation = validateContent(content);
-    if (!moderation.valid) return res.status(400).json({ error: moderation.reason });
-
-    const cleanTags = Array.isArray(tags)
-        ? tags.map((t: string) => t.toLowerCase().replace(/[^a-záéíóúñ0-9]/g, '').trim()).filter(Boolean) : [];
-
-    // Validate and clean media array (max 10 items)
-    let cleanMedia: Array<{ type: string; url: string }> = [];
+    // Validate and clean media array (max 4 items). Items may include an optional R2 `key`.
+    type IncomingMedia = { type?: unknown; url?: unknown; key?: unknown };
+    let cleanMedia: Array<{ type: string; url: string; key?: string }> = [];
     if (Array.isArray(media)) {
-        cleanMedia = media
-            .filter((m: any) => m && typeof m.url === 'string' && m.url.trim() && ['image', 'video'].includes(m.type))
-            .slice(0, 10)
-            .map((m: any) => ({ type: m.type, url: m.url.trim() }));
+        cleanMedia = (media as IncomingMedia[])
+            .filter((m) =>
+                m && typeof m.url === 'string' && (m.url as string).trim() &&
+                typeof m.type === 'string' && ['image', 'video'].includes(m.type as string)
+            )
+            .slice(0, 4)
+            .map((m) => {
+                const item: { type: string; url: string; key?: string } = {
+                    type: m.type as string,
+                    url: (m.url as string).trim(),
+                };
+                if (typeof m.key === 'string' && (m.key as string).trim()) {
+                    item.key = (m.key as string).trim();
+                }
+                return item;
+            });
     } else if (image_url && typeof image_url === 'string') {
         // Backward compat: single image_url → media array
         cleanMedia = [{ type: 'image', url: image_url }];
     }
 
+    // Ownership check: any key provided must live under posts/{userId}/
+    const expectedPrefix = `posts/${user.id}/`;
+    for (const m of cleanMedia) {
+        if (m.key && !m.key.startsWith(expectedPrefix)) {
+            return res.status(403).json({ error: 'No puedes publicar archivos de otro usuario' });
+        }
+    }
+
+    // Content is required only when there is no media attached
+    if (!trimmedContent && cleanMedia.length === 0) {
+        return res.status(400).json({ error: 'El contenido es requerido' });
+    }
+    if (contentStr.length > 500) {
+        return res.status(400).json({ error: 'El contenido no puede exceder 500 caracteres' });
+    }
+    if (trimmedContent) {
+        const moderation = validateContent(contentStr);
+        if (!moderation.valid) return res.status(400).json({ error: moderation.reason });
+    }
+
+    const cleanTags = Array.isArray(tags)
+        ? tags.map((t: string) => t.toLowerCase().replace(/[^a-záéíóúñ0-9]/g, '').trim()).filter(Boolean) : [];
+
     try {
         const supabase = createSupabaseClient(req.headers.authorization);
-        const insertData: Record<string, unknown> = { user_id: user.id, content: content.trim(), tags: cleanTags, media: cleanMedia };
+        const insertData: Record<string, unknown> = {
+            user_id: user.id,
+            content: trimmedContent,
+            tags: cleanTags,
+            media: cleanMedia,
+        };
         // Legacy compat
         if (cleanMedia.length > 0 && cleanMedia[0].type === 'image') insertData.image_url = cleanMedia[0].url;
         const { data, error } = await supabase

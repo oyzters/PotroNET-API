@@ -8,7 +8,10 @@
     "lint": "echo 'no lint configured'"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1030.0",
+    "@aws-sdk/s3-request-presigner": "^3.1030.0",
     "@supabase/supabase-js": "^2.49.1",
+    "nanoid": "^5.1.9",
     "resend": "^6.9.3"
   },
   "devDependencies": {
