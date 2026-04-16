@@ -64,7 +64,6 @@ export async function uploadsSignedUrl(req: VercelRequest, res: VercelResponse) 
             Bucket: getR2Bucket(),
             Key: key,
             ContentType: fileType,
-            ContentLength: fileSize,
         });
 
         const signedUrl = await getSignedUrl(getR2Client(), command, {
