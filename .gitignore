@@ -3,3 +3,6 @@ dist/
 .env
 .env.local
 .vercel/
+
+.env.example
+scripts/test-r2-upload.mjs
