@@ -81,14 +81,16 @@ export async function professorRequests(req: VercelRequest, res: VercelResponse)
     }
 
     if (req.method === 'POST') {
-        const { professor_name, department, career_id, reason } = req.body;
+        const { professor_name, department, career_id, reason, nickname } = req.body;
         if (!professor_name) return res.status(400).json({ error: 'professor_name is required' });
+        const nick = typeof nickname === 'string' ? nickname.trim() : '';
+        if (nick && nick.length > 40) return res.status(400).json({ error: 'El apodo no puede exceder 40 caracteres' });
 
         try {
             const supabase = createSupabaseClient(req.headers.authorization);
             const { data, error } = await supabase
                 .from('professor_requests')
-                .insert({ requested_by: user.id, professor_name, department: department || '', career_id: career_id || null, reason: reason || '' })
+                .insert({ requested_by: user.id, professor_name, department: department || '', career_id: career_id || null, reason: reason || '', nickname: nick || null })
                 .select().single();
             if (error) return res.status(400).json({ error: error.message });
             return res.status(201).json({ request: data });
@@ -96,6 +98,32 @@ export async function professorRequests(req: VercelRequest, res: VercelResponse)
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
+}
+
+// POST /professors/:id/nickname-suggestions — authenticated student suggests a nickname
+export async function professorNicknameSuggestions(req: VercelRequest, res: VercelResponse, id: string) {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    const user = await getAuthUser(req);
+    if (!user) return res.status(401).json({ error: 'No autenticado' });
+
+    const raw = (req.body?.nickname as string) || '';
+    const nickname = raw.trim();
+    if (!nickname) return res.status(400).json({ error: 'nickname es requerido' });
+    if (nickname.length > 40) return res.status(400).json({ error: 'El apodo no puede exceder 40 caracteres' });
+
+    try {
+        const { data: prof } = await supabaseAdmin.from('professors').select('id').eq('id', id).single();
+        if (!prof) return res.status(404).json({ error: 'Profesor no encontrado' });
+
+        const { data, error } = await supabaseAdmin.from('professor_nickname_suggestions')
+            .insert({ professor_id: id, suggested_by: user.id, nickname })
+            .select().single();
+        if (error) {
+            if (error.code === '23505') return res.status(409).json({ error: 'Ya sugeriste este apodo' });
+            return res.status(400).json({ error: error.message });
+        }
+        return res.status(201).json({ suggestion: data });
+    } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
 }
 
 // GET|POST|PUT /professors/reviews

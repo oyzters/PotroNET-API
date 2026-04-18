@@ -10,7 +10,7 @@ import { followsIndex, followStatus, followById } from '../server/routes/follows
 import { rankingsIndex } from '../server/routes/rankings';
 import { messagesIndex, messagesByUser } from '../server/routes/messages';
 import { notificationsIndex } from '../server/routes/notifications';
-import { professorsList, professorById, professorRequests, professorReviews } from '../server/routes/professors';
+import { professorsList, professorById, professorRequests, professorReviews, professorNicknameSuggestions } from '../server/routes/professors';
 import { profilesList, profileById } from '../server/routes/profiles';
 import { publicationsIndex, publicationById, publicationLike, publicationComments } from '../server/routes/publications';
 import { reportsIndex } from '../server/routes/reports';
@@ -21,7 +21,7 @@ import { subjectsIndex, subjectsUser } from '../server/routes/subjects';
 import { schedulesIndex, scheduleById } from '../server/routes/schedules';
 import { tutoringIndex, tutoringRequests, tutoringSessions, tutoringSessionById } from '../server/routes/tutoring';
 import { settingsIndex } from '../server/routes/settings';
-import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications, adminSubjects, adminProfessors } from '../server/routes/admin';
+import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications, adminSubjects, adminProfessors, adminNicknameSuggestions } from '../server/routes/admin';
 import { moderationRemovePublication, moderationRemoveComment, moderationWarnUser, moderationStats, moderationReports, moderationResolveReport, moderationUserHistory, moderationLog } from '../server/routes/moderation.routes';
 import { pushPublicKey, pushSubscribe } from '../server/routes/push';
 
@@ -84,6 +84,7 @@ const routes: Route[] = [
     { pattern: ['professors', 'reviews'], handler: professorReviews },
     { pattern: ['professors'], handler: professorsList },
     { pattern: ['professors', ':id'], handler: professorById },
+    { pattern: ['professors', ':id', 'nickname-suggestions'], handler: professorNicknameSuggestions },
 
     // Profiles
     { pattern: ['profiles'], handler: profilesList },
@@ -131,6 +132,7 @@ const routes: Route[] = [
     { pattern: ['admin', 'publications'], handler: adminPublications },
     { pattern: ['admin', 'professor-requests'], handler: adminProfessorRequests },
     { pattern: ['admin', 'professors'], handler: adminProfessors },
+    { pattern: ['admin', 'nickname-suggestions'], handler: adminNicknameSuggestions },
     { pattern: ['admin', 'notifications'], handler: adminNotifications },
     { pattern: ['admin', 'subjects'], handler: adminSubjects },
 

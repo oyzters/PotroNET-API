@@ -281,7 +281,7 @@ export async function adminProfessorRequests(req: VercelRequest, res: VercelResp
     }
 
     if (req.method === 'PATCH') {
-        const { request_id, status, professor_name, department, career_id } = req.body;
+        const { request_id, status, professor_name, department, career_id, nickname } = req.body;
         if (!request_id || !status) return res.status(400).json({ error: 'request_id and status are required' });
         if (!['approved', 'rejected'].includes(status))
             return res.status(400).json({ error: 'status must be approved or rejected' });
@@ -292,10 +292,12 @@ export async function adminProfessorRequests(req: VercelRequest, res: VercelResp
             if (error) return res.status(400).json({ error: error.message });
 
             if (status === 'approved') {
+                const resolvedNickname = nickname !== undefined ? (nickname ? String(nickname).trim() : null) : (request.nickname || null);
                 await supabaseAdmin.from('professors').insert({
                     full_name: professor_name || request.professor_name,
                     department: department || request.department,
                     career_id: career_id || request.career_id,
+                    nickname: resolvedNickname,
                     is_approved: true,
                 });
             }
@@ -403,7 +405,7 @@ export async function adminProfessors(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'POST') {
-        const { full_name, email, department, career_id, is_approved } = req.body;
+        const { full_name, email, department, career_id, is_approved, nickname } = req.body;
         if (!full_name?.trim()) return res.status(400).json({ error: 'full_name es requerido' });
         try {
             const { data, error } = await supabaseAdmin.from('professors').insert({
@@ -412,6 +414,7 @@ export async function adminProfessors(req: VercelRequest, res: VercelResponse) {
                 department: department?.trim() || null,
                 career_id: career_id || null,
                 is_approved: is_approved !== undefined ? !!is_approved : true,
+                nickname: nickname?.trim() || null,
             }).select(`*, career:careers(id, name)`).single();
             if (error) return res.status(400).json({ error: error.message });
             return res.status(201).json({ professor: data });
@@ -419,7 +422,7 @@ export async function adminProfessors(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'PATCH') {
-        const { id, full_name, email, department, career_id, is_approved } = req.body;
+        const { id, full_name, email, department, career_id, is_approved, nickname } = req.body;
         if (!id) return res.status(400).json({ error: 'id es requerido' });
         const updates: Record<string, unknown> = {};
         if (full_name !== undefined) updates.full_name = String(full_name).trim();
@@ -427,6 +430,7 @@ export async function adminProfessors(req: VercelRequest, res: VercelResponse) {
         if (department !== undefined) updates.department = department ? String(department).trim() : null;
         if (career_id !== undefined) updates.career_id = career_id || null;
         if (is_approved !== undefined) updates.is_approved = !!is_approved;
+        if (nickname !== undefined) updates.nickname = nickname ? String(nickname).trim() : null;
         if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No hay datos para actualizar' });
         try {
             const { data, error } = await supabaseAdmin.from('professors').update(updates).eq('id', id)
@@ -520,6 +524,58 @@ export async function adminNotifications(req: VercelRequest, res: VercelResponse
             }).catch(() => {});
 
             return res.status(201).json({ sent: userIds.length });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+}
+
+// GET|PATCH /admin/nickname-suggestions
+// GET: list pending suggestions (optional ?status=approved|rejected|pending, default pending)
+// PATCH: { id, action: 'approve'|'reject' }. Approve copies nickname to professor.
+export async function adminNicknameSuggestions(req: VercelRequest, res: VercelResponse) {
+    const user = await getAuthUser(req);
+    if (!requireAdmin(user)) return res.status(403).json({ error: 'Se requieren permisos de administrador' });
+
+    if (req.method === 'GET') {
+        const status = (req.query.status as string) || 'pending';
+        const professor_id = req.query.professor_id as string | undefined;
+        try {
+            let q = supabaseAdmin.from('professor_nickname_suggestions')
+                .select('id, professor_id, suggested_by, nickname, status, created_at, reviewed_at, professor:professors(id, full_name, nickname), suggester:profiles!suggested_by(id, full_name)')
+                .order('created_at', { ascending: false });
+            if (status !== 'all') q = q.eq('status', status);
+            if (professor_id) q = q.eq('professor_id', professor_id);
+            const { data, error } = await q;
+            if (error) return res.status(400).json({ error: error.message });
+            return res.status(200).json({ suggestions: data });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    if (req.method === 'PATCH') {
+        const { id, action } = req.body as { id?: string; action?: 'approve' | 'reject' };
+        if (!id || !action) return res.status(400).json({ error: 'id y action son requeridos' });
+        if (action !== 'approve' && action !== 'reject') return res.status(400).json({ error: 'action inválida' });
+
+        try {
+            const { data: sugg, error: fetchErr } = await supabaseAdmin.from('professor_nickname_suggestions')
+                .select('id, professor_id, nickname, status').eq('id', id).single();
+            if (fetchErr || !sugg) return res.status(404).json({ error: 'Sugerencia no encontrada' });
+            if (sugg.status !== 'pending') return res.status(400).json({ error: 'La sugerencia ya fue revisada' });
+
+            const newStatus = action === 'approve' ? 'approved' : 'rejected';
+            const { error: updErr } = await supabaseAdmin.from('professor_nickname_suggestions')
+                .update({ status: newStatus, reviewed_by: user!.id, reviewed_at: new Date().toISOString() })
+                .eq('id', id);
+            if (updErr) return res.status(400).json({ error: updErr.message });
+
+            if (action === 'approve') {
+                const { error: profErr } = await supabaseAdmin.from('professors')
+                    .update({ nickname: sugg.nickname }).eq('id', sugg.professor_id);
+                if (profErr) return res.status(400).json({ error: profErr.message });
+            }
+
+            return res.status(200).json({ success: true, status: newStatus });
         } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
     }
 
