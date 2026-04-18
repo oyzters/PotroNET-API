@@ -18,6 +18,7 @@ import { resourcesIndex } from '../server/routes/resources';
 import { uploadsSignedUrl } from '../server/routes/uploads';
 import { searchAll } from '../server/routes/search';
 import { subjectsIndex, subjectsUser } from '../server/routes/subjects';
+import { schedulesIndex, scheduleById } from '../server/routes/schedules';
 import { tutoringIndex, tutoringRequests, tutoringSessions, tutoringSessionById } from '../server/routes/tutoring';
 import { settingsIndex } from '../server/routes/settings';
 import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications, adminSubjects } from '../server/routes/admin';
@@ -102,6 +103,10 @@ const routes: Route[] = [
     // Subjects
     { pattern: ['subjects', 'user'], handler: subjectsUser },
     { pattern: ['subjects'], handler: subjectsIndex },
+
+    // Schedules (user weekly class schedule)
+    { pattern: ['schedules'], handler: schedulesIndex },
+    { pattern: ['schedules', ':id'], handler: scheduleById },
 
     // Settings
     { pattern: ['settings'], handler: settingsIndex },
