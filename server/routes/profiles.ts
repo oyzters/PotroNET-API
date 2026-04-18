@@ -41,7 +41,7 @@ async function profilePatch(req: VercelRequest, res: VercelResponse, id: string)
     if (!user) return res.status(401).json({ error: 'No autenticado' });
     if (user.id !== id) return res.status(403).json({ error: 'Solo puedes editar tu propio perfil' });
 
-    const { full_name, bio, career_id, semester, interests, avatar_url, cover_url } = req.body;
+    const { full_name, bio, career_id, semester, interests, avatar_url, cover_url, schedule_visibility } = req.body;
     const updates: Record<string, unknown> = {};
     if (full_name !== undefined) updates.full_name = full_name;
     if (bio !== undefined) updates.bio = bio;
@@ -50,6 +50,11 @@ async function profilePatch(req: VercelRequest, res: VercelResponse, id: string)
     if (interests !== undefined) updates.interests = interests;
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
     if (cover_url !== undefined) updates.cover_url = cover_url;
+    if (schedule_visibility !== undefined) {
+        if (!['public', 'followers', 'private'].includes(schedule_visibility))
+            return res.status(400).json({ error: 'schedule_visibility inválido' });
+        updates.schedule_visibility = schedule_visibility;
+    }
 
     if (Object.keys(updates).length === 0)
         return res.status(400).json({ error: 'No hay datos para actualizar' });
