@@ -3,6 +3,7 @@ import { getAuthUser } from '../lib/auth';
 import { createSupabaseClient, supabaseAdmin } from '../lib/supabase';
 import { sendEmail } from '../lib/email';
 import { firstMessageTemplate, firstMessageOfDayTemplate } from '../lib/email-templates';
+import { sendPush } from '../lib/push';
 
 // GET|POST /messages
 export async function messagesIndex(req: VercelRequest, res: VercelResponse) {
@@ -97,8 +98,22 @@ async function messagesPost(req: VercelRequest, res: VercelResponse, userId: str
         // Disparar emails en background (sin bloquear la respuesta)
         triggerMessageEmails(userId, receiver_id, content.trim()).catch(() => {});
 
+        // Disparar push notification en background
+        triggerMessagePush(userId, receiver_id, content.trim()).catch(() => {});
+
         return res.status(201).json({ message: data });
     } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+}
+
+async function triggerMessagePush(senderId: string, receiverId: string, content: string) {
+    const { data: sender } = await supabaseAdmin.from('profiles').select('full_name').eq('id', senderId).single();
+    const preview = content.length > 120 ? content.slice(0, 120) + '…' : content;
+    await sendPush(receiverId, 'message', {
+        title: sender?.full_name || 'Nuevo mensaje',
+        body: preview,
+        url: `/messages/${senderId}`,
+        tag: `msg-${senderId}`,
+    });
 }
 
 async function triggerMessageEmails(senderId: string, receiverId: string, content: string) {
