@@ -3,7 +3,7 @@ import { cors } from '../server/lib/cors';
 import { rateLimit } from '../server/lib/rate-limit';
 
 // Route imports
-import { login, register, me } from '../server/routes/auth';
+import { login, register, me, forgotPassword, resendVerification } from '../server/routes/auth';
 import { listCareers } from '../server/routes/careers';
 import { friendsIndex, friendById } from '../server/routes/friends';
 import { followsIndex, followStatus, followById } from '../server/routes/follows';
@@ -18,6 +18,7 @@ import { resourcesIndex } from '../server/routes/resources';
 import { uploadsSignedUrl } from '../server/routes/uploads';
 import { searchAll } from '../server/routes/search';
 import { subjectsIndex, subjectsUser } from '../server/routes/subjects';
+import { schedulesIndex, scheduleById } from '../server/routes/schedules';
 import { tutoringIndex, tutoringRequests, tutoringSessions, tutoringSessionById } from '../server/routes/tutoring';
 import { settingsIndex } from '../server/routes/settings';
 import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications, adminSubjects } from '../server/routes/admin';
@@ -49,6 +50,8 @@ const routes: Route[] = [
     { pattern: ['auth', 'login'], handler: login },
     { pattern: ['auth', 'register'], handler: register },
     { pattern: ['auth', 'me'], handler: me },
+    { pattern: ['auth', 'forgot-password'], handler: forgotPassword },
+    { pattern: ['auth', 'resend-verification'], handler: resendVerification },
 
     // Careers
     { pattern: ['careers'], handler: listCareers },
@@ -107,6 +110,10 @@ const routes: Route[] = [
     // Subjects
     { pattern: ['subjects', 'user'], handler: subjectsUser },
     { pattern: ['subjects'], handler: subjectsIndex },
+
+    // Schedules (user weekly class schedule)
+    { pattern: ['schedules'], handler: schedulesIndex },
+    { pattern: ['schedules', ':id'], handler: scheduleById },
 
     // Settings
     { pattern: ['settings'], handler: settingsIndex },
