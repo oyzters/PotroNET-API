@@ -3,6 +3,7 @@ import { getAuthUser, requireAdmin } from '../lib/auth';
 import { supabaseAdmin } from '../lib/supabase';
 import { sendEmail } from '../lib/email';
 import { warningTemplate, contentRemovedTemplate } from '../lib/email-templates';
+import { sendPush, type PushType } from '../lib/push';
 
 const VALID_CATEGORIES = ['spam', 'acoso', 'contenido_sexual', 'violencia', 'informacion_falsa', 'odio', 'otro'];
 
@@ -57,6 +58,11 @@ async function notifyUser(opts: {
             content: opts.title,
             is_read: false,
         });
+        sendPush(opts.userId, opts.type as PushType, {
+            title: opts.title,
+            body: opts.body || '',
+            url: '/notifications',
+        }).catch(() => {});
     } catch (e) {
         console.error('[moderation] Failed to send notification:', e);
     }

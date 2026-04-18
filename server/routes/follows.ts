@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthUser } from '../lib/auth';
 import { createSupabaseClient, supabaseAdmin, getSupabaseAdmin } from '../lib/supabase';
+import { sendPush } from '../lib/push';
 
 // GET|POST /follows
 export async function followsIndex(req: VercelRequest, res: VercelResponse) {
@@ -144,15 +145,22 @@ async function followsPost(req: VercelRequest, res: VercelResponse, userId: stri
 
         // Send notification
         const { data: sender } = await supabaseAdmin.from('profiles').select('full_name').eq('id', userId).single();
+        const followTitle = `${sender?.full_name || 'Alguien'} te empezó a seguir`;
+        const followBody = isFriends ? 'Ahora son amigos' : 'Visita su perfil';
         await supabaseAdmin.from('notifications').insert({
             user_id: following_id,
             type: 'follow',
-            title: `${sender?.full_name || 'Alguien'} te empezó a seguir`,
-            body: isFriends ? 'Ahora son amigos' : 'Visita su perfil',
-            content: `${sender?.full_name || 'Alguien'} te empezó a seguir`,
+            title: followTitle,
+            body: followBody,
+            content: followTitle,
             reference_id: data.id,
             is_read: false,
         });
+        sendPush(following_id, 'follow', {
+            title: followTitle,
+            body: followBody,
+            url: `/profile/${userId}`,
+        }).catch(() => {});
 
         // Update is_message_request for existing messages if they just became friends
         if (isFriends) {
