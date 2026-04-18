@@ -1,4 +1,4 @@
-const BASE_URL = 'https://potronet.com';
+const BASE_URL = process.env.FRONTEND_URL || 'https://potronet.com';
 
 /** Escapa caracteres HTML para prevenir XSS en templates de email */
 function esc(str: string): string {
@@ -169,6 +169,40 @@ export function warningTemplate(category: string, message: string): string {
         <a href="${BASE_URL}/notifications" style="display:inline-block;background:#f59e0b;color:#000;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
           Ver mis notificaciones
         </a>
+    `);
+}
+
+export function emailVerificationTemplate(email: string, link: string): string {
+    return wrapper(`
+        <h2 style="margin:0 0 8px;color:#ffffff;font-size:20px;">Verifica tu correo ✉️</h2>
+        <p style="margin:0 0 24px;color:#888;font-size:14px;">Haz clic en el botón para activar tu cuenta de PotroNET</p>
+
+        <div style="background:#222;border-radius:12px;padding:20px;margin-bottom:24px;border-left:3px solid #6d28d9;">
+          <p style="margin:0 0 6px;color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Cuenta</p>
+          <p style="margin:0;color:#ccc;font-size:14px;">${esc(email)}</p>
+        </div>
+
+        <a href="${link}" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
+          Verificar correo
+        </a>
+        <p style="margin:16px 0 0;color:#555;font-size:12px;">Si no creaste una cuenta en PotroNET, ignora este correo.</p>
+    `);
+}
+
+export function passwordResetTemplate(email: string, link: string): string {
+    return wrapper(`
+        <h2 style="margin:0 0 8px;color:#ffffff;font-size:20px;">Recupera tu contraseña 🔐</h2>
+        <p style="margin:0 0 24px;color:#888;font-size:14px;">Recibimos una solicitud para restablecer la contraseña de tu cuenta</p>
+
+        <div style="background:#222;border-radius:12px;padding:20px;margin-bottom:24px;border-left:3px solid #6d28d9;">
+          <p style="margin:0 0 6px;color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Cuenta</p>
+          <p style="margin:0;color:#ccc;font-size:14px;">${esc(email)}</p>
+        </div>
+
+        <a href="${link}" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
+          Restablecer contraseña
+        </a>
+        <p style="margin:16px 0 0;color:#555;font-size:12px;">Este enlace expira en 1 hora. Si no solicitaste esto, ignora este correo.</p>
     `);
 }
 
