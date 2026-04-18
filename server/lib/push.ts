@@ -86,7 +86,9 @@ export async function sendPush(
         title: payload.title,
         body: payload.body || '',
         url: payload.url || '/',
-        icon: payload.icon || '/potronet.png',
+        // Intentionally omit `icon` — Android renders the manifest PWA icon
+        // for attribution; setting a second icon shows it on the right.
+        ...(payload.icon ? { icon: payload.icon } : {}),
         badge: payload.badge || '/favicon.png',
         tag: payload.tag || type,
         data: payload.data || {},
