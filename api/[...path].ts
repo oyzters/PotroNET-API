@@ -22,6 +22,7 @@ import { tutoringIndex, tutoringRequests, tutoringSessions, tutoringSessionById 
 import { settingsIndex } from '../server/routes/settings';
 import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications, adminSubjects } from '../server/routes/admin';
 import { moderationRemovePublication, moderationRemoveComment, moderationWarnUser, moderationStats, moderationReports, moderationResolveReport, moderationUserHistory, moderationLog } from '../server/routes/moderation.routes';
+import { pushPublicKey, pushSubscribe } from '../server/routes/push';
 
 // Health check handler
 function health(_req: VercelRequest, res: VercelResponse) {
@@ -70,6 +71,10 @@ const routes: Route[] = [
 
     // Notifications
     { pattern: ['notifications'], handler: notificationsIndex },
+
+    // Push notifications (Web Push)
+    { pattern: ['push', 'public-key'], handler: pushPublicKey },
+    { pattern: ['push', 'subscribe'], handler: pushSubscribe },
 
     // Professors (specific routes before parameterized)
     { pattern: ['professors', 'requests'], handler: professorRequests },

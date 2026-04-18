@@ -3,6 +3,7 @@ import { getAuthUser } from '../lib/auth';
 import { createSupabaseClient, supabaseAdmin } from '../lib/supabase';
 import { sendEmail } from '../lib/email';
 import { friendRequestTemplate } from '../lib/email-templates';
+import { sendPush } from '../lib/push';
 
 // GET|POST /friends
 export async function friendsIndex(req: VercelRequest, res: VercelResponse) {
@@ -76,13 +77,20 @@ async function friendsPost(req: VercelRequest, res: VercelResponse, userId: stri
         if (error) return res.status(400).json({ error: error.message });
 
         const { data: sender } = await supabaseAdmin.from('profiles').select('full_name').eq('id', userId).single();
+        const frTitle = `${sender?.full_name || 'Alguien'} te envió una solicitud de amistad`;
+        const frBody = 'Revisa tus solicitudes de amistad';
         await supabaseAdmin.from('notifications').insert({
             user_id: addressee_id, type: 'friend_request',
-            title: `${sender?.full_name || 'Alguien'} te envió una solicitud de amistad`,
-            body: 'Revisa tus solicitudes de amistad',
-            content: `${sender?.full_name || 'Alguien'} te envió una solicitud de amistad`,
+            title: frTitle,
+            body: frBody,
+            content: frTitle,
             reference_id: data.id, is_read: false,
         });
+        sendPush(addressee_id, 'friend_request', {
+            title: frTitle,
+            body: frBody,
+            url: '/friends',
+        }).catch(() => {});
 
         const { data: addressee } = await supabaseAdmin.from('profiles').select('email').eq('id', addressee_id).single();
         if (addressee?.email && sender?.full_name) {

@@ -3,6 +3,7 @@ import { getAuthUser, requireAdmin, requireSudo } from '../lib/auth';
 import { supabaseAdmin } from '../lib/supabase';
 import { sendEmail } from '../lib/email';
 import { notificationTemplate } from '../lib/email-templates';
+import { sendPushToMany } from '../lib/push';
 
 // GET /admin/stats
 export async function adminStats(req: VercelRequest, res: VercelResponse) {
@@ -351,6 +352,13 @@ export async function adminNotifications(req: VercelRequest, res: VercelResponse
 
             // Enviar emails en background
             sendNotificationEmails(userIds, message.trim()).catch(() => {});
+
+            // Enviar push en background
+            sendPushToMany(userIds, 'system', {
+                title: 'PotroNET',
+                body: message.trim(),
+                url: '/notifications',
+            }).catch(() => {});
 
             return res.status(201).json({ sent: userIds.length });
         } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }

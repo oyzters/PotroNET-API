@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthUser } from '../lib/auth';
 import { createSupabaseClient, getSupabaseAdmin } from '../lib/supabase';
+import { sendPush } from '../lib/push';
 
 // GET|POST /tutoring
 export async function tutoringIndex(req: VercelRequest, res: VercelResponse) {
@@ -128,12 +129,19 @@ export async function tutoringSessions(req: VercelRequest, res: VercelResponse) 
 
             // Notify tutor
             const { data: student } = await admin.from('profiles').select('full_name').eq('id', user.id).single();
+            const tutTitle = `${student?.full_name || 'Un estudiante'} solicitó una sesión de ${offer.subject_name}`;
+            const tutBody = `Fecha: ${session_date}, ${time_start}–${time_end}`;
             await admin.from('notifications').insert({
                 user_id: offer.tutor_id,
                 type: 'tutoring',
-                title: `${student?.full_name || 'Un estudiante'} solicitó una sesión de ${offer.subject_name}`,
-                body: `Fecha: ${session_date}, ${time_start}–${time_end}`,
+                title: tutTitle,
+                body: tutBody,
             });
+            sendPush(offer.tutor_id, 'tutoring', {
+                title: tutTitle,
+                body: tutBody,
+                url: '/tutoring',
+            }).catch(() => {});
 
             return res.status(201).json({ session: data });
         } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
@@ -179,12 +187,19 @@ export async function tutoringSessionById(req: VercelRequest, res: VercelRespons
         const notifyUserId = user.id === session.tutor_id ? session.student_id : session.tutor_id;
         const { data: actor } = await admin.from('profiles').select('full_name').eq('id', user.id).single();
         const statusLabels: Record<string, string> = { confirmed: 'confirmó', completed: 'completó', cancelled: 'canceló' };
+        const stTitle = `${actor?.full_name || 'Alguien'} ${statusLabels[status]} la sesión de tutoría`;
+        const stBody = `Fecha: ${session.session_date}`;
         await admin.from('notifications').insert({
             user_id: notifyUserId,
             type: 'tutoring',
-            title: `${actor?.full_name || 'Alguien'} ${statusLabels[status]} la sesión de tutoría`,
-            body: `Fecha: ${session.session_date}`,
+            title: stTitle,
+            body: stBody,
         });
+        sendPush(notifyUserId, 'tutoring', {
+            title: stTitle,
+            body: stBody,
+            url: '/tutoring',
+        }).catch(() => {});
 
         return res.status(200).json({ session: data });
     } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
