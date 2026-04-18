@@ -12,7 +12,13 @@ export async function adminStats(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
-        const [usersResult, pubsResult, careersResult, professorsResult, tutoringResult, resourcesResult, pendingReportsResult] = await Promise.all([
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+        const [
+            usersResult, pubsResult, careersResult, professorsResult,
+            tutoringResult, resourcesResult, pendingReportsResult,
+            commentsResult, messagesResult, subjectsResult, professorReqResult,
+        ] = await Promise.all([
             supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }),
             supabaseAdmin.from('publications').select('*', { count: 'exact', head: true }),
             supabaseAdmin.from('careers').select('*', { count: 'exact', head: true }),
@@ -20,14 +26,23 @@ export async function adminStats(req: VercelRequest, res: VercelResponse) {
             supabaseAdmin.from('tutoring_offers').select('*', { count: 'exact', head: true }).eq('is_active', true),
             supabaseAdmin.from('resources').select('*', { count: 'exact', head: true }),
             supabaseAdmin.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+            supabaseAdmin.from('publication_comments').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('messages').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('career_subjects').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('professor_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         ]);
 
-        const [usersByRole, bannedUsers, recentUsers, activeWarningsResult] = await Promise.all([
+        const [
+            usersByRole, bannedUsers, recentUsers, activeWarningsResult,
+            recentPubs, recentComments, recentMessages,
+        ] = await Promise.all([
             supabaseAdmin.from('profiles').select('role'),
             supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('is_banned', true),
-            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true })
-                .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
             supabaseAdmin.from('user_warnings').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('publications').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
+            supabaseAdmin.from('publication_comments').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
+            supabaseAdmin.from('messages').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
         ]);
 
         const roleCounts = { user: 0, admin: 0, sudo: 0 };
@@ -37,12 +52,31 @@ export async function adminStats(req: VercelRequest, res: VercelResponse) {
 
         return res.status(200).json({
             stats: {
-                totalUsers: usersResult.count || 0, totalPublications: pubsResult.count || 0,
-                totalCareers: careersResult.count || 0, totalProfessors: professorsResult.count || 0,
-                totalTutoring: tutoringResult.count || 0, totalResources: resourcesResult.count || 0,
-                pendingReports: pendingReportsResult.count || 0, bannedUsers: bannedUsers.count || 0,
-                newUsersThisWeek: recentUsers.count || 0, usersByRole: roleCounts,
+                // Totales
+                totalUsers: usersResult.count || 0,
+                totalPublications: pubsResult.count || 0,
+                totalCareers: careersResult.count || 0,
+                totalProfessors: professorsResult.count || 0,
+                totalTutoring: tutoringResult.count || 0,
+                totalResources: resourcesResult.count || 0,
+                totalComments: commentsResult.count || 0,
+                totalMessages: messagesResult.count || 0,
+                totalSubjects: subjectsResult.count || 0,
+
+                // Moderación / alertas
+                pendingReports: pendingReportsResult.count || 0,
+                pendingProfessorRequests: professorReqResult.count || 0,
+                bannedUsers: bannedUsers.count || 0,
                 activeWarnings: activeWarningsResult.count || 0,
+
+                // Última semana (engagement)
+                newUsersThisWeek: recentUsers.count || 0,
+                newPublicationsThisWeek: recentPubs.count || 0,
+                newCommentsThisWeek: recentComments.count || 0,
+                newMessagesThisWeek: recentMessages.count || 0,
+
+                // Distribución
+                usersByRole: roleCounts,
             },
         });
     } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
@@ -88,6 +122,30 @@ export async function adminUsers(req: VercelRequest, res: VercelResponse) {
             if (error) return res.status(400).json({ error: error.message });
             return res.status(200).json({ user: data });
         } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    if (req.method === 'DELETE') {
+        if (!requireSudo(user)) return res.status(403).json({ error: 'Solo sudo puede eliminar usuarios' });
+        const target_id = (req.query.user_id as string | undefined) || (req.body?.user_id as string | undefined);
+        if (!target_id) return res.status(400).json({ error: 'user_id is required' });
+        if (target_id === user!.id) return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
+
+        try {
+            // Delete auth user first (cascades to public.profiles via FK on profiles.id → auth.users.id)
+            // If the cascade is not configured, we explicitly delete the profile too.
+            const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(target_id);
+            if (authErr && !String(authErr.message).toLowerCase().includes('not found')) {
+                return res.status(400).json({ error: authErr.message });
+            }
+
+            // Ensure profile is gone (in case FK cascade isn't set up)
+            await supabaseAdmin.from('profiles').delete().eq('id', target_id);
+
+            return res.status(200).json({ success: true });
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Error interno del servidor';
+            return res.status(500).json({ error: msg });
+        }
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
@@ -154,14 +212,35 @@ export async function adminPublications(req: VercelRequest, res: VercelResponse)
             const offset = (page - 1) * limit;
 
             let query = supabaseAdmin.from('publications')
-                .select(`*, author:profiles!publications_user_id_fkey(id, full_name, avatar_url, email), reports:reports!reports_target_id_fkey(count)`, { count: 'exact' })
+                .select(`*, author:profiles!publications_user_id_fkey(id, full_name, avatar_url, email)`, { count: 'exact' })
                 .order('created_at', { ascending: false }).range(offset, offset + limit - 1);
             if (search) query = query.ilike('content', `%${search}%`);
 
             const { data, error, count } = await query;
             if (error) return res.status(400).json({ error: error.message });
+
+            // Separate query for report counts (reports.target_id is TEXT, no FK, so join can't be inlined)
+            const ids = (data || []).map(p => p.id);
+            let reportCounts: Record<string, number> = {};
+            if (ids.length > 0) {
+                const { data: reps } = await supabaseAdmin
+                    .from('reports')
+                    .select('target_id')
+                    .eq('report_type', 'publication')
+                    .in('target_id', ids);
+                reportCounts = (reps || []).reduce<Record<string, number>>((acc, r) => {
+                    acc[r.target_id] = (acc[r.target_id] || 0) + 1;
+                    return acc;
+                }, {});
+            }
+
+            const publications = (data || []).map(p => ({
+                ...p,
+                reports: [{ count: reportCounts[p.id] || 0 }],
+            }));
+
             return res.status(200).json({
-                publications: data, pagination: { page, limit, total: count, totalPages: Math.ceil((count || 0) / limit) },
+                publications, pagination: { page, limit, total: count, totalPages: Math.ceil((count || 0) / limit) },
             });
         } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
     }
@@ -297,6 +376,79 @@ export async function adminSubjects(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// GET|POST|PATCH|DELETE /admin/professors
+export async function adminProfessors(req: VercelRequest, res: VercelResponse) {
+    const user = await getAuthUser(req);
+    if (!requireAdmin(user)) return res.status(403).json({ error: 'Se requieren permisos de administrador' });
+
+    if (req.method === 'GET') {
+        try {
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 30;
+            const search = req.query.search as string;
+            const offset = (page - 1) * limit;
+
+            let query = supabaseAdmin.from('professors')
+                .select(`*, career:careers(id, name)`, { count: 'exact' })
+                .order('full_name').range(offset, offset + limit - 1);
+            if (search) query = query.ilike('full_name', `%${search}%`);
+
+            const { data, error, count } = await query;
+            if (error) return res.status(400).json({ error: error.message });
+            return res.status(200).json({
+                professors: data,
+                pagination: { page, limit, total: count, totalPages: Math.ceil((count || 0) / limit) },
+            });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    if (req.method === 'POST') {
+        const { full_name, email, department, career_id, is_approved } = req.body;
+        if (!full_name?.trim()) return res.status(400).json({ error: 'full_name es requerido' });
+        try {
+            const { data, error } = await supabaseAdmin.from('professors').insert({
+                full_name: full_name.trim(),
+                email: email?.trim() || null,
+                department: department?.trim() || null,
+                career_id: career_id || null,
+                is_approved: is_approved !== undefined ? !!is_approved : true,
+            }).select(`*, career:careers(id, name)`).single();
+            if (error) return res.status(400).json({ error: error.message });
+            return res.status(201).json({ professor: data });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    if (req.method === 'PATCH') {
+        const { id, full_name, email, department, career_id, is_approved } = req.body;
+        if (!id) return res.status(400).json({ error: 'id es requerido' });
+        const updates: Record<string, unknown> = {};
+        if (full_name !== undefined) updates.full_name = String(full_name).trim();
+        if (email !== undefined) updates.email = email ? String(email).trim() : null;
+        if (department !== undefined) updates.department = department ? String(department).trim() : null;
+        if (career_id !== undefined) updates.career_id = career_id || null;
+        if (is_approved !== undefined) updates.is_approved = !!is_approved;
+        if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No hay datos para actualizar' });
+        try {
+            const { data, error } = await supabaseAdmin.from('professors').update(updates).eq('id', id)
+                .select(`*, career:careers(id, name)`).single();
+            if (error) return res.status(400).json({ error: error.message });
+            return res.status(200).json({ professor: data });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    if (req.method === 'DELETE') {
+        const id = (req.query.id as string | undefined) || (req.body?.id as string | undefined);
+        if (!id) return res.status(400).json({ error: 'id es requerido' });
+        try {
+            const { error } = await supabaseAdmin.from('professors').delete().eq('id', id);
+            if (error) return res.status(400).json({ error: error.message });
+            return res.status(200).json({ success: true });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+}
+
 // GET|POST /admin/notifications
 export async function adminNotifications(req: VercelRequest, res: VercelResponse) {
     const user = await getAuthUser(req);
@@ -319,7 +471,7 @@ export async function adminNotifications(req: VercelRequest, res: VercelResponse
     }
 
     if (req.method === 'POST') {
-        const { message, target_type, career_id, user_id } = req.body;
+        const { message, target_type, career_id, user_id, user_email } = req.body;
         if (!message?.trim()) return res.status(400).json({ error: 'El mensaje es requerido' });
         if (!['global', 'career', 'user'].includes(target_type))
             return res.status(400).json({ error: 'target_type debe ser global, career o user' });
@@ -328,8 +480,15 @@ export async function adminNotifications(req: VercelRequest, res: VercelResponse
             let userIds: string[] = [];
 
             if (target_type === 'user') {
-                if (!user_id) return res.status(400).json({ error: 'user_id es requerido para target_type=user' });
-                userIds = [user_id];
+                let resolvedId = user_id as string | undefined;
+                if (!resolvedId && user_email) {
+                    const { data: profile } = await supabaseAdmin
+                        .from('profiles').select('id').eq('email', String(user_email).toLowerCase()).maybeSingle();
+                    if (!profile) return res.status(404).json({ error: 'Usuario no encontrado con ese correo' });
+                    resolvedId = profile.id;
+                }
+                if (!resolvedId) return res.status(400).json({ error: 'user_id o user_email es requerido' });
+                userIds = [resolvedId];
             } else if (target_type === 'career') {
                 if (!career_id) return res.status(400).json({ error: 'career_id es requerido para target_type=career' });
                 const { data } = await supabaseAdmin.from('profiles').select('id').eq('career_id', career_id).eq('is_banned', false);

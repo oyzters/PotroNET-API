@@ -21,7 +21,7 @@ import { subjectsIndex, subjectsUser } from '../server/routes/subjects';
 import { schedulesIndex, scheduleById } from '../server/routes/schedules';
 import { tutoringIndex, tutoringRequests, tutoringSessions, tutoringSessionById } from '../server/routes/tutoring';
 import { settingsIndex } from '../server/routes/settings';
-import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications, adminSubjects } from '../server/routes/admin';
+import { adminStats, adminUsers, adminReports, adminPublications, adminProfessorRequests, adminNotifications, adminSubjects, adminProfessors } from '../server/routes/admin';
 import { moderationRemovePublication, moderationRemoveComment, moderationWarnUser, moderationStats, moderationReports, moderationResolveReport, moderationUserHistory, moderationLog } from '../server/routes/moderation.routes';
 import { pushPublicKey, pushSubscribe } from '../server/routes/push';
 
@@ -130,6 +130,7 @@ const routes: Route[] = [
     { pattern: ['admin', 'reports'], handler: adminReports },
     { pattern: ['admin', 'publications'], handler: adminPublications },
     { pattern: ['admin', 'professor-requests'], handler: adminProfessorRequests },
+    { pattern: ['admin', 'professors'], handler: adminProfessors },
     { pattern: ['admin', 'notifications'], handler: adminNotifications },
     { pattern: ['admin', 'subjects'], handler: adminSubjects },
 
