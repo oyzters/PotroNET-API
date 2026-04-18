@@ -3,7 +3,7 @@ import { cors } from '../server/lib/cors';
 import { rateLimit } from '../server/lib/rate-limit';
 
 // Route imports
-import { login, register, me } from '../server/routes/auth';
+import { login, register, me, forgotPassword, resendVerification } from '../server/routes/auth';
 import { listCareers } from '../server/routes/careers';
 import { friendsIndex, friendById } from '../server/routes/friends';
 import { followsIndex, followStatus, followById } from '../server/routes/follows';
@@ -48,6 +48,8 @@ const routes: Route[] = [
     { pattern: ['auth', 'login'], handler: login },
     { pattern: ['auth', 'register'], handler: register },
     { pattern: ['auth', 'me'], handler: me },
+    { pattern: ['auth', 'forgot-password'], handler: forgotPassword },
+    { pattern: ['auth', 'resend-verification'], handler: resendVerification },
 
     // Careers
     { pattern: ['careers'], handler: listCareers },
