@@ -69,7 +69,7 @@ export async function register(req: VercelRequest, res: VercelResponse) {
             full_name,
         }, { onConflict: 'id' });
 
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const frontendUrl = process.env.FRONTEND_URL || 'https://potronet.com';
         const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
             type: 'signup',
             email: email.toLowerCase(),
@@ -100,7 +100,7 @@ export async function forgotPassword(req: VercelRequest, res: VercelResponse) {
     if (!email) return res.status(400).json({ error: 'Email is required' });
 
     try {
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const frontendUrl = process.env.FRONTEND_URL || 'https://potronet.com';
         const redirectTo = redirect_to || `${frontendUrl}/reset-password`;
 
         const { data, error } = await supabaseAdmin.auth.admin.generateLink({
@@ -133,7 +133,7 @@ export async function resendVerification(req: VercelRequest, res: VercelResponse
     if (!email) return res.status(400).json({ error: 'Email is required' });
 
     try {
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const frontendUrl = process.env.FRONTEND_URL || 'https://potronet.com';
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabaseAdmin.auth.admin as any).generateLink({
             type: 'signup',
