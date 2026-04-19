@@ -105,9 +105,16 @@ async function messagesPost(req: VercelRequest, res: VercelResponse, userId: str
     } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
 }
 
+const NOTIF_MEDIA_RE = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|mp4|webm)(\?.*)?$/i;
+const NOTIF_VIDEO_RE = /\.(mp4|webm)(\?.*)?$/i;
+function notifPreview(content: string): string {
+    if (NOTIF_MEDIA_RE.test(content)) return NOTIF_VIDEO_RE.test(content) ? '🎥 Video' : '📷 Foto';
+    return content.length > 120 ? content.slice(0, 120) + '…' : content;
+}
+
 async function triggerMessagePush(senderId: string, receiverId: string, content: string) {
     const { data: sender } = await supabaseAdmin.from('profiles').select('full_name').eq('id', senderId).single();
-    const preview = content.length > 120 ? content.slice(0, 120) + '…' : content;
+    const preview = notifPreview(content);
     await sendPush(receiverId, 'message', {
         title: sender?.full_name || 'Nuevo mensaje',
         body: preview,
@@ -125,7 +132,7 @@ async function triggerMessageEmails(senderId: string, receiverId: string, conten
 
     if (!receiver?.email || !sender?.full_name) return;
 
-    const preview = content.length > 120 ? content.slice(0, 120) + '…' : content;
+    const preview = notifPreview(content);
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
 
     // Contar mensajes previos entre estos dos usuarios (ever)

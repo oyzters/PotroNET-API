@@ -3,6 +3,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const DEFAULT_ALLOWED_ORIGINS_PROD = [
     'https://potronet.com',
     'https://www.potronet.com',
+    'https://admin.potronet.com',
+    'https://www.admin.potronet.com',
 ];
 
 const ALLOWED_HEADERS =
