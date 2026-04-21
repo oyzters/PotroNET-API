@@ -58,7 +58,7 @@ export async function uploadsSignedUrl(req: VercelRequest, res: VercelResponse) 
         const now = new Date();
         const yyyy = now.getUTCFullYear();
         const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
-        const key = `posts/${user.id}/${yyyy}/${mm}/${nanoid(12)}-${sanitizeFileName(fileName)}`;
+        const key = `posts/${yyyy}/${mm}/${nanoid(16)}-${sanitizeFileName(fileName)}`;
 
         const command = new PutObjectCommand({
             Bucket: getR2Bucket(),

@@ -238,3 +238,27 @@ export function contentRemovedTemplate(reason: string, category: string): string
         </a>
     `);
 }
+
+export function accountLockedTemplate(minutesLocked: number): string {
+    return wrapper(`
+        <h2 style="margin:0 0 8px;color:#f59e0b;font-size:20px;">⚠️ Cuenta bloqueada temporalmente</h2>
+        <p style="margin:0 0 24px;color:#888;font-size:14px;">Se detectaron múltiples intentos fallidos de inicio de sesión en tu cuenta de PotroNET</p>
+
+        <div style="background:#2d2000;border-radius:12px;padding:20px;margin-bottom:24px;border-left:3px solid #f59e0b;">
+          <p style="margin:0 0 8px;color:#f59e0b;font-size:14px;font-weight:600;">Tu cuenta ha sido bloqueada por ${minutesLocked} minuto(s)</p>
+          <p style="margin:0;color:#ccc;font-size:13px;line-height:1.5;">
+            Después de este tiempo podrás volver a intentar iniciar sesión.
+            Si no fuiste tú, te recomendamos cambiar tu contraseña inmediatamente.
+          </p>
+        </div>
+
+        <p style="margin:0 0 20px;color:#888;font-size:13px;line-height:1.6;">
+          Si reconoces este intento como propio, simplemente espera y vuelve a intentarlo.
+          Si no lo reconoces, cambia tu contraseña usando el enlace de recuperación.
+        </p>
+
+        <a href="${BASE_URL}/forgot-password" style="display:inline-block;background:#f59e0b;color:#000;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
+          Cambiar contraseña
+        </a>
+    `);
+}

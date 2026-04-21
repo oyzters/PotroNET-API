@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "tsc && node dev-server.js",
     "build": "tsc",
-    "lint": "echo 'no lint configured'"
+    "lint": "echo 'no lint configured'",
+    "audit": "npm audit --audit-level=moderate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",
