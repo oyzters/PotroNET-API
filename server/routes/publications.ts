@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthUser } from '../lib/auth';
 import { createSupabaseClient } from '../lib/supabase';
 import { validateContent } from '../lib/moderation';
+import { isValidUUID } from '../lib/validate';
 
 // GET|POST /publications
 export async function publicationsIndex(req: VercelRequest, res: VercelResponse) {
@@ -26,7 +27,10 @@ async function publicationsGet(req: VercelRequest, res: VercelResponse) {
             .order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
         if (tag) query = query.contains('tags', [tag]);
-        if (userId) query = query.eq('user_id', userId);
+        if (userId) {
+            if (!isValidUUID(userId)) return res.status(400).json({ error: 'user_id inválido' });
+            query = query.eq('user_id', userId);
+        }
 
         const { data, error, count } = await query;
         if (error) return res.status(400).json({ error: error.message });
@@ -84,11 +88,10 @@ async function publicationsPost(req: VercelRequest, res: VercelResponse) {
         cleanMedia = [{ type: 'image', url: image_url }];
     }
 
-    // Ownership check: any key provided must live under posts/{userId}/
-    const expectedPrefix = `posts/${user.id}/`;
+    // Ownership check: any key must live under posts/ prefix (R2 path no longer includes user ID)
     for (const m of cleanMedia) {
-        if (m.key && !m.key.startsWith(expectedPrefix)) {
-            return res.status(403).json({ error: 'No puedes publicar archivos de otro usuario' });
+        if (m.key && !m.key.startsWith('posts/')) {
+            return res.status(403).json({ error: 'Ruta de archivo inválida' });
         }
     }
 
@@ -129,6 +132,7 @@ async function publicationsPost(req: VercelRequest, res: VercelResponse) {
 
 // GET|DELETE /publications/:id
 export async function publicationById(req: VercelRequest, res: VercelResponse, id: string) {
+    if (!isValidUUID(id)) return res.status(400).json({ error: 'ID de publicación inválido' });
     if (req.method === 'GET') {
         try {
             const supabase = createSupabaseClient(req.headers.authorization);
@@ -163,6 +167,7 @@ export async function publicationById(req: VercelRequest, res: VercelResponse, i
 
 // POST /publications/:id/likes — toggle like
 export async function publicationLike(req: VercelRequest, res: VercelResponse, id: string) {
+    if (!isValidUUID(id)) return res.status(400).json({ error: 'ID de publicación inválido' });
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const user = await getAuthUser(req);
@@ -186,6 +191,7 @@ export async function publicationLike(req: VercelRequest, res: VercelResponse, i
 
 // GET /publications/:id/comments, POST /publications/:id/comments
 export async function publicationComments(req: VercelRequest, res: VercelResponse, id: string) {
+    if (!isValidUUID(id)) return res.status(400).json({ error: 'ID de publicación inválido' });
     if (req.method === 'GET') return commentsGet(req, res, id);
     if (req.method === 'POST') return commentsPost(req, res, id);
     return res.status(405).json({ error: 'Method not allowed' });

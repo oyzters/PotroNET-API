@@ -5,6 +5,20 @@ import { sendEmail } from '../lib/email';
 import { notificationTemplate } from '../lib/email-templates';
 import { sendPushToMany } from '../lib/push';
 
+async function logAdminAction(adminId: string, actionType: string, targetUserId: string, meta: Record<string, unknown> = {}) {
+    try {
+        await supabaseAdmin.from('moderation_actions').insert({
+            moderator_id: adminId,
+            action_type: actionType,
+            target_user_id: targetUserId,
+            target_content_id: '',
+            category: 'otro',
+            reason: '',
+            meta,
+        });
+    } catch { /* non-critical — don't fail the request */ }
+}
+
 // GET /admin/stats
 export async function adminStats(req: VercelRequest, res: VercelResponse) {
     const user = await getAuthUser(req);
@@ -120,6 +134,8 @@ export async function adminUsers(req: VercelRequest, res: VercelResponse) {
         try {
             const { data, error } = await supabaseAdmin.from('profiles').update(updates).eq('id', user_id).select(`*, career:careers(id, name)`).single();
             if (error) return res.status(400).json({ error: error.message });
+            if (role !== undefined) logAdminAction(user!.id, 'admin_role_change', user_id, { new_role: role }).catch(() => {});
+            if (is_banned !== undefined) logAdminAction(user!.id, is_banned ? 'admin_user_ban' : 'admin_user_unban', user_id, { is_banned }).catch(() => {});
             return res.status(200).json({ user: data });
         } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
     }
@@ -141,6 +157,7 @@ export async function adminUsers(req: VercelRequest, res: VercelResponse) {
             // Ensure profile is gone (in case FK cascade isn't set up)
             await supabaseAdmin.from('profiles').delete().eq('id', target_id);
 
+            logAdminAction(user!.id, 'admin_user_delete', target_id).catch(() => {});
             return res.status(200).json({ success: true });
         } catch (e) {
             const msg = e instanceof Error ? e.message : 'Error interno del servidor';

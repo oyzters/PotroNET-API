@@ -4,6 +4,7 @@ import { supabaseAdmin } from '../lib/supabase';
 import { sendEmail } from '../lib/email';
 import { warningTemplate, contentRemovedTemplate } from '../lib/email-templates';
 import { sendPush, type PushType } from '../lib/push';
+import { isValidUUID } from '../lib/validate';
 
 const VALID_CATEGORIES = ['spam', 'acoso', 'contenido_sexual', 'violencia', 'informacion_falsa', 'odio', 'otro'];
 
@@ -70,6 +71,7 @@ async function notifyUser(opts: {
 
 // POST /moderation/publications/:id/remove
 export async function moderationRemovePublication(req: VercelRequest, res: VercelResponse, id: string) {
+    if (!isValidUUID(id)) return res.status(400).json({ error: 'ID inválido' });
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const user = await getAuthUser(req);
@@ -132,6 +134,7 @@ export async function moderationRemovePublication(req: VercelRequest, res: Verce
 
 // POST /moderation/comments/:id/remove
 export async function moderationRemoveComment(req: VercelRequest, res: VercelResponse, id: string) {
+    if (!isValidUUID(id)) return res.status(400).json({ error: 'ID inválido' });
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const user = await getAuthUser(req);
@@ -169,6 +172,7 @@ export async function moderationRemoveComment(req: VercelRequest, res: VercelRes
 
 // POST /moderation/users/:id/warn
 export async function moderationWarnUser(req: VercelRequest, res: VercelResponse, id: string) {
+    if (!isValidUUID(id)) return res.status(400).json({ error: 'ID inválido' });
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const user = await getAuthUser(req);
@@ -295,6 +299,7 @@ export async function moderationReports(req: VercelRequest, res: VercelResponse)
 
 // PATCH /moderation/reports/:id
 export async function moderationResolveReport(req: VercelRequest, res: VercelResponse, id: string) {
+    if (!isValidUUID(id)) return res.status(400).json({ error: 'ID inválido' });
     if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
 
     const user = await getAuthUser(req);
@@ -331,6 +336,7 @@ export async function moderationResolveReport(req: VercelRequest, res: VercelRes
 
 // GET /moderation/users/:id/history
 export async function moderationUserHistory(req: VercelRequest, res: VercelResponse, id: string) {
+    if (!isValidUUID(id)) return res.status(400).json({ error: 'ID inválido' });
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
     const user = await getAuthUser(req);

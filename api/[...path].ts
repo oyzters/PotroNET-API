@@ -204,12 +204,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const matched = matchRoute(pathSegments);
 
     if (!matched) {
-        return res.status(404).json({
-            error: 'Endpoint not found',
-            path: `/api/${pathSegments.join('/')}`,
-            debug_query: req.query,
-            debug_url: req.url
-        });
+        return res.status(404).json({ error: 'Endpoint not found' });
     }
 
     try {

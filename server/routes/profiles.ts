@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthUser } from '../lib/auth';
 import { supabaseAdmin, createSupabaseClient } from '../lib/supabase';
+import { isValidUUID } from '../lib/validate';
 
 // GET /profiles
 export async function profilesList(req: VercelRequest, res: VercelResponse) {
@@ -28,6 +29,7 @@ export async function profileById(req: VercelRequest, res: VercelResponse, id: s
 }
 
 async function profileGet(res: VercelResponse, id: string) {
+    if (!isValidUUID(id)) return res.status(400).json({ error: 'ID de perfil inválido' });
     try {
         const { data, error } = await supabaseAdmin
             .from('profiles').select(`*, career:careers(id, name)`).eq('id', id).single();
@@ -37,6 +39,7 @@ async function profileGet(res: VercelResponse, id: string) {
 }
 
 async function profilePatch(req: VercelRequest, res: VercelResponse, id: string) {
+    if (!isValidUUID(id)) return res.status(400).json({ error: 'ID de perfil inválido' });
     const user = await getAuthUser(req);
     if (!user) return res.status(401).json({ error: 'No autenticado' });
     if (user.id !== id) return res.status(403).json({ error: 'Solo puedes editar tu propio perfil' });
