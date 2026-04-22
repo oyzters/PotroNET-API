@@ -42,7 +42,7 @@ async function settingsGet(req: VercelRequest, res: VercelResponse, userId: stri
 }
 
 async function settingsPatch(req: VercelRequest, res: VercelResponse, userId: string) {
-    const { notification_email, dm_privacy, theme } = req.body;
+    const { notification_email, dm_privacy, theme, show_likes_to_owner } = req.body;
 
     try {
         const supabase = createSupabaseClient(req.headers.authorization);
@@ -51,6 +51,7 @@ async function settingsPatch(req: VercelRequest, res: VercelResponse, userId: st
         if (typeof notification_email === 'boolean') updates.notification_email = notification_email;
         if (dm_privacy) updates.dm_privacy = dm_privacy;
         if (theme) updates.theme = theme;
+        if (typeof show_likes_to_owner === 'boolean') updates.show_likes_to_owner = show_likes_to_owner;
 
         // Ensure row exists first (upsert via admin)
         const admin = getSupabaseAdmin();
