@@ -130,9 +130,10 @@ async function publicationsPost(req: VercelRequest, res: VercelResponse) {
     } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
 }
 
-// GET|DELETE /publications/:id
+// GET|PATCH|DELETE /publications/:id
 export async function publicationById(req: VercelRequest, res: VercelResponse, id: string) {
     if (!isValidUUID(id)) return res.status(400).json({ error: 'ID de publicación inválido' });
+
     if (req.method === 'GET') {
         try {
             const supabase = createSupabaseClient(req.headers.authorization);
@@ -141,6 +142,44 @@ export async function publicationById(req: VercelRequest, res: VercelResponse, i
                 .select(`*, author:profiles!publications_user_id_fkey(id, full_name, avatar_url, email)`)
                 .eq('id', id).single();
             if (error || !data) return res.status(404).json({ error: 'Publicación no encontrada' });
+            return res.status(200).json({ publication: data });
+        } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+    }
+
+    if (req.method === 'PATCH') {
+        const user = await getAuthUser(req);
+        if (!user) return res.status(401).json({ error: 'No autenticado' });
+
+        const { content } = req.body;
+        const contentStr = typeof content === 'string' ? content : '';
+        const trimmedContent = contentStr.trim();
+
+        if (!trimmedContent) return res.status(400).json({ error: 'El contenido es requerido' });
+        if (contentStr.length > 500) return res.status(400).json({ error: 'El contenido no puede exceder 500 caracteres' });
+
+        const moderation = validateContent(contentStr);
+        if (!moderation.valid) return res.status(400).json({ error: moderation.reason });
+
+        try {
+            const supabase = createSupabaseClient(req.headers.authorization);
+            const { data: pub } = await supabase
+                .from('publications').select('user_id, created_at').eq('id', id).single();
+            if (!pub) return res.status(404).json({ error: 'Publicación no encontrada' });
+            if (pub.user_id !== user.id) return res.status(403).json({ error: 'No tienes permisos para editar esta publicación' });
+
+            const ageMs = Date.now() - new Date(pub.created_at).getTime();
+            if (ageMs > 60 * 60 * 1000) {
+                return res.status(403).json({ error: 'Solo puedes editar una publicación durante la primera hora' });
+            }
+
+            const { data, error } = await supabase
+                .from('publications')
+                .update({ content: trimmedContent, is_edited: true, updated_at: new Date().toISOString() })
+                .eq('id', id)
+                .select(`*, author:profiles!publications_user_id_fkey(id, full_name, avatar_url, email)`)
+                .single();
+
+            if (error) return res.status(400).json({ error: error.message });
             return res.status(200).json({ publication: data });
         } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
     }
@@ -165,9 +204,11 @@ export async function publicationById(req: VercelRequest, res: VercelResponse, i
     return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// GET /publications/:id/likes — list users who liked (owner only, requires show_likes_to_owner)
 // POST /publications/:id/likes — toggle like
 export async function publicationLike(req: VercelRequest, res: VercelResponse, id: string) {
     if (!isValidUUID(id)) return res.status(400).json({ error: 'ID de publicación inválido' });
+    if (req.method === 'GET') return publicationLikersGet(req, res, id);
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const user = await getAuthUser(req);
@@ -177,15 +218,63 @@ export async function publicationLike(req: VercelRequest, res: VercelResponse, i
         const supabase = createSupabaseClient(req.headers.authorization);
 
         const { data: existing } = await supabase
-            .from('publication_likes').select('id').eq('user_id', user.id).eq('publication_id', id).maybeSingle();
+            .from('publication_likes').select('user_id').eq('user_id', user.id).eq('publication_id', id).maybeSingle();
 
         if (existing) {
-            await supabase.from('publication_likes').delete().eq('id', existing.id);
+            await supabase.from('publication_likes').delete().eq('user_id', user.id).eq('publication_id', id);
             return res.status(200).json({ liked: false });
         } else {
             await supabase.from('publication_likes').insert({ user_id: user.id, publication_id: id });
             return res.status(200).json({ liked: true });
         }
+    } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
+}
+
+async function publicationLikersGet(req: VercelRequest, res: VercelResponse, id: string) {
+    const user = await getAuthUser(req);
+    if (!user) return res.status(401).json({ error: 'No autenticado' });
+
+    try {
+        const supabase = createSupabaseClient(req.headers.authorization);
+
+        const { data: pub } = await supabase.from('publications').select('user_id').eq('id', id).single();
+        if (!pub) return res.status(404).json({ error: 'Publicación no encontrada' });
+        if (pub.user_id !== user.id) return res.status(403).json({ error: 'Solo el autor puede ver los likes' });
+
+        const { data: settings } = await supabase
+            .from('user_settings').select('show_likes_to_owner').eq('user_id', user.id).maybeSingle();
+        if (settings && settings.show_likes_to_owner === false) {
+            return res.status(403).json({ error: 'Función desactivada en configuración' });
+        }
+
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = Math.min(parseInt(req.query.limit as string) || 30, 50);
+        const offset = (page - 1) * limit;
+
+        const { data: likes, count, error } = await supabase
+            .from('publication_likes')
+            .select('user_id, created_at', { count: 'exact' })
+            .eq('publication_id', id)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
+
+        if (error) return res.status(400).json({ error: error.message });
+
+        const userIds = (likes || []).map((l: any) => l.user_id);
+        let likers: any[] = [];
+        if (userIds.length > 0) {
+            const { data: profiles } = await supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url')
+                .in('id', userIds);
+            const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+            likers = userIds.map((uid: string) => profileMap.get(uid)).filter(Boolean);
+        }
+
+        return res.status(200).json({
+            likers,
+            pagination: { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) },
+        });
     } catch { return res.status(500).json({ error: 'Error interno del servidor' }); }
 }
 
